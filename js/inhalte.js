@@ -35,6 +35,7 @@ window.FV_INHALT = {
       link: "https://www.st-mariamagdalena-geldern.de"
     },
     registergericht: "Registergericht und Nummer folgen",
+    datenschutz: { name: "Carsten Göthner", email: "dsb@mentor-gmbh.de" },
     gemeinnuetzig: null              // true, sobald die Gemeinnützigkeit bestätigt ist
   },
 
