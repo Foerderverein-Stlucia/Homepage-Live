@@ -535,6 +535,7 @@
         <div class="card stack" style="--gap:14px"><h2>Rechtliches</h2>
           ${feld("v_reg", "Registergericht und Nummer", V.registergericht, { k: "registergericht", ph: "z. B. Amtsgericht Kleve, VR 1234" })}
           ${haken("v_gem", "Der Verein ist als gemeinnützig anerkannt (ändert den Text zur Spendenquittung)", V.gemeinnuetzig, "gemeinnuetzig")}
+          <div class="cols">${feld("v_dsbn", "Datenschutzbeauftragte/r (falls benannt)", (V.datenschutz || {}).name, { k: "datenschutz.name" })}${feld("v_dsbm", "E-Mail dazu", (V.datenschutz || {}).email, { k: "datenschutz.email", type: "email" })}</div>
           <p class="mute small">Für Zuwendungsbestätigungen (Spendenbescheinigung), Angaben genau wie im Bescheid des Finanzamts:</p>
           <div class="cols">${feld("v_bart", "Bescheid", (V.bescheid || {}).art || "Freistellungsbescheid", { k: "bescheid.art", type: "select", opts: [["Freistellungsbescheid", "Freistellungsbescheid"], ["Anlage zum Körperschaftsteuerbescheid", "Anlage zum Körperschaftsteuerbescheid"]] })}${feld("v_bdat", "Datum des Bescheids", (V.bescheid || {}).datum, { k: "bescheid.datum", type: "date" })}</div>
           <div class="cols">${feld("v_bfa", "Finanzamt", (V.bescheid || {}).finanzamt, { k: "bescheid.finanzamt" })}${feld("v_bnr", "Steuernummer", (V.bescheid || {}).steuernr, { k: "bescheid.steuernr" })}</div>
@@ -566,7 +567,7 @@
         kontakt: { ...V.kontakt, ...d.kontakt }, papierAntrag: d.papierAntrag, bank: { ...V.bank, ...d.bank }, beitraege,
         mindestbeitrag: parseFloat(String(d.mindestbeitrag).replace(",", ".")) || Math.min(...beitraege),
         beitraegeFirma: beitraegeFirma.length ? beitraegeFirma : [50, 100, 250], mindestbeitragFirma: parseFloat(String(d.mindestbeitragFirma).replace(",", ".")) || (beitraegeFirma.length ? Math.min(...beitraegeFirma) : 50), beitragZeitraum: d.beitragZeitraum || "pro Jahr",
-        glaeubigerId: d.glaeubigerId, registergericht: d.registergericht, gemeinnuetzig: !!d.gemeinnuetzig, bescheid: { ...(V.bescheid || {}), ...(d.bescheid || {}) }, kitaInfo: { ...V.kitaInfo, ...d.kitaInfo } };
+        glaeubigerId: d.glaeubigerId, registergericht: d.registergericht, gemeinnuetzig: !!d.gemeinnuetzig, bescheid: { ...(V.bescheid || {}), ...(d.bescheid || {}) }, datenschutz: { ...(V.datenschutz || {}), ...(d.datenschutz || {}) }, kitaInfo: { ...V.kitaInfo, ...d.kitaInfo } };
       delete neu.demoListen;
       try { await D.inhaltSpeichern("verein", neu); A.aktualisieren({ verein: neu }); toast("Vereinsdaten gespeichert"); }
       catch (ex) { er.textContent = ex.message; er.hidden = false; }

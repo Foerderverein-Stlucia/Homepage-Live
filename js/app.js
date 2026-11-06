@@ -512,17 +512,32 @@
   };
 
   SEITEN.datenschutz = (v) => {
-    v.innerHTML = kopf("teal", "Rechtliches", "Datenschutz", "") + `<div class="prose">
-      <p><b>Verantwortlich</b><br>${esc(V.name)}, ${esc(V.kontakt.adresse)}, ${esc(V.kontakt.email)}</p>
-      <h3>Welche Daten wir verarbeiten</h3>
-      <ul><li><b>Mitgliedsantrag:</b> Name, Anschrift, E-Mail, Telefon (freiwillig), Bankverbindung und Beitrag. Zweck: Mitgliederverwaltung und Beitragseinzug (Art. 6 Abs. 1 lit. b DSGVO). Löschung spätestens zehn Jahre nach Austritt wegen steuerlicher Aufbewahrungspflichten.</li>
-      <li><b>Newsletter:</b> Nur wenn ihr ihn im Antrag ankreuzt, nutzen wir eure E-Mail-Adresse für Informationen zu Veranstaltungen und Aktionen (Art. 6 Abs. 1 lit. a DSGVO). Abmelden geht jederzeit per E-Mail.</li>
-      <li><b>Eintragelisten:</b> Name und freiwillig eine Kontaktmöglichkeit. Öffentlich sichtbar ist nur der Vorname mit Anfangsbuchstaben des Nachnamens. Löschung nach der Veranstaltung.</li>
-      <li><b>Auf eurem Gerät</b> speichert die App, für welche Plätze ihr euch eingetragen habt, damit ihr euch wieder austragen könnt. Das bleibt auf eurem Gerät.</li></ul>
-      <h3>Hosting und Datenbank</h3><p>[Hoster und Datenbankanbieter mit Serverstandort eintragen, z. B. Supabase, Region Frankfurt. Mit beiden einen Vertrag zur Auftragsverarbeitung abschließen.]</p>
-      <h3>Keine Tracker, anonyme Zählung</h3><p>Die Seite nutzt keine Analyse-Werkzeuge von Dritten, keine Cookies und lädt keine Schriften oder Skripte von fremden Servern. Um zu sehen, ob die Seite genutzt wird, zählen wir auf unserem eigenen Server nur, wie oft welche Seite aufgerufen wurde, getrennt nach Handy oder Computer und App oder Browser. Dabei wird keine Kennung gesetzt und nichts auf eurem Gerät gespeichert, und die Zahlen lassen sich keiner Person zuordnen (Art. 6 Abs. 1 lit. f DSGVO, Interesse am Betrieb und an der Verbesserung der Seite). Ausgeloggte Aufrufe von Vorstandsmitgliedern zählen mit.</p>
-      <h3>Eure Rechte</h3><p>Ihr habt das Recht auf Auskunft, Berichtigung, Löschung, Einschränkung und Widerspruch sowie auf Beschwerde bei der Landesbeauftragten für Datenschutz NRW.</p>
-      <p class="mute small">Vorlage – vor Veröffentlichung prüfen lassen.</p></div>`;
+    const dsb = V.datenschutz || {};
+    v.innerHTML = kopf("teal", "Rechtliches", "Datenschutz", "Informationen nach Artikel 13 DSGVO") + `<div class="prose">
+      <h3>Name und Anschrift des Verantwortlichen</h3>
+      <p>${esc(V.name)}<br>${esc(V.kontakt.adresse)}<br>E-Mail: ${esc(V.kontakt.email)}</p>
+      ${dsb.name || dsb.email ? `<h3>Kontaktdaten des Datenschutzbeauftragten</h3><p>${esc(dsb.name || "")}${dsb.name ? "<br>" : ""}Postanschrift wie oben${dsb.email ? `<br>E-Mail: ${esc(dsb.email)}` : ""}</p>` : ""}
+      <h3>Zwecke und Rechtsgrundlage der Datenverarbeitung</h3>
+      <p>Im Zusammenhang mit der Mitgliedschaft in unserem Förderverein verarbeiten wir eure personenbezogenen Daten auf der Grundlage vertraglicher Verpflichtungen, gemäß Artikel 6 Absatz 1 Buchstabe b DSGVO, sowie in unserem berechtigten Interesse, gemäß Artikel 6 Absatz 1 Buchstabe f DSGVO. Wenn ihr euch für den Empfang unseres E-Mail-Newsletters angemeldet habt, verarbeiten wir diese Daten auf Grundlage eurer Einwilligung, gemäß Artikel 6 Absatz 1 Buchstabe a DSGVO. Abmelden geht jederzeit per E-Mail.</p>
+      <p><b>Welche Daten:</b> Mitgliedsantrag: Name, Anschrift, E-Mail, Telefon (freiwillig), Bankverbindung und Beitrag, bei Firmen zusätzlich der Firmenname. Eintragelisten: Name und freiwillig eine Kontaktmöglichkeit. Öffentlich sichtbar ist dort nur der Vorname mit Anfangsbuchstaben des Nachnamens. Die Angaben aus den Listen löschen wir nach der Veranstaltung.</p>
+      <h3>Empfänger der Daten</h3>
+      <p>Wenn ihr uns eine Einzugsermächtigung zur Abbuchung der Mitgliedsbeiträge erteilt habt, leiten wir eure Bankdaten an unsere Hausbank weiter. Im Übrigen erhalten eure Daten unser Vereinsvorstand sowie unser Steuerberater. Die Daten liegen in einer Datenbank beim Anbieter Supabase auf Servern in Frankfurt am Main. Mit dem Anbieter besteht ein Vertrag zur Auftragsverarbeitung.</p>
+      <h3>Übermittlung in Drittländer</h3>
+      <p>Eure Angaben aus Antrag und Listen werden nicht in Drittländer übermittelt. Die Seite selbst wird über GitHub Pages ausgeliefert (GitHub, USA). Beim Aufruf der Seite kann dabei eure IP-Adresse an GitHub übertragen werden. Daten aus Formularen gehen nicht an GitHub.</p>
+      <h3>Speicherdauer der Daten</h3>
+      <p>Daten und Unterlagen, die mit eurer Mitgliedschaft in Zusammenhang stehen, müssen wir bis zu zehn Jahre aufbewahren. Die Aufbewahrungsdauer ist gesetzlich vorgeschrieben und dient vor allem der Erfüllung steuerrechtlicher Verpflichtungen.</p>
+      <h3>Recht auf Auskunft, Berichtigung, Löschung, Einschränkung der Verarbeitung</h3>
+      <p>Ihr habt das Recht auf Auskunft, welche persönlichen Daten bei uns gespeichert sind, auf Berichtigung, auf Löschung und auf Einschränkung der Verarbeitung. Löschen können wir die Daten nur, wenn wir sie nicht mehr aufbewahren müssen. Solange wir die Daten aufbewahren müssen, nehmen wir stattdessen eine Einschränkung der Verarbeitung vor.</p>
+      <h3>Recht auf Widerspruch, Datenübertragbarkeit und Widerruf einer Einwilligung</h3>
+      <p>Ihr habt außerdem das Recht auf Widerspruch gegen die Verarbeitung persönlicher Daten und auf Datenübertragbarkeit. Wenn für eine Verarbeitung eine Einwilligung erteilt wurde, könnt ihr sie mit Wirkung für die Zukunft jederzeit widerrufen. Die Rechtmäßigkeit der Verarbeitung bis zum Widerruf bleibt davon unberührt.</p>
+      <h3>Beschwerderecht bei der Aufsichtsbehörde</h3>
+      <p>Ihr habt das Recht, euch bei der Aufsichtsbehörde zu beschweren: Der Landesbeauftragte für Datenschutz und Informationsfreiheit Nordrhein-Westfalen, Postfach 200444, 40102 Düsseldorf, Telefon 0211 / 38424-0, poststelle@ldi.nrw.de.</p>
+      <h3>Erforderlichkeit der Datenbereitstellung</h3>
+      <p>Um die Mitgliedschaft in unserem Förderverein durchführen zu können, benötigen wir eure persönlichen Daten. Ohne diese Daten kann unser Förderverein seinen gesetzlichen Verpflichtungen nicht nachkommen. Wir verwenden die im Rahmen der Mitgliedschaft bereitgestellten Daten nur zu den oben beschriebenen Zwecken. Auf keinen Fall werden sie für eine automatisierte Entscheidung im Einzelfall oder ein Profiling verwendet.</p>
+      <h3>Diese Webseite</h3>
+      <p><b>Auf eurem Gerät</b> speichert die App, für welche Plätze ihr euch eingetragen habt, damit ihr euch wieder austragen könnt. Das bleibt auf eurem Gerät.</p>
+      <p><b>Keine Tracker, anonyme Zählung:</b> Die Seite nutzt keine Analyse-Werkzeuge von Dritten, keine Cookies und lädt keine Schriften oder Skripte von fremden Servern. Um zu sehen, ob die Seite genutzt wird, zählen wir auf unserem eigenen Server nur, wie oft welche Seite aufgerufen wurde, getrennt nach Handy oder Computer und App oder Browser. Dabei wird keine Kennung gesetzt und nichts auf eurem Gerät gespeichert, und die Zahlen lassen sich keiner Person zuordnen (Art. 6 Abs. 1 lit. f DSGVO, Interesse am Betrieb und an der Verbesserung der Seite).</p>
+      <p>Bei Fragen zu diesen Informationen und zum Datenschutz wendet euch an uns unter ${esc(V.kontakt.email)}.</p></div>`;
   };
 
   /* ---------- Mitgliedsantrag ---------- */
@@ -561,7 +576,7 @@
           <p class="mandate">Ich ermächtige den ${esc(V.name)}${V.glaeubigerId ? " (Gläubiger-ID " + esc(V.glaeubigerId) + ")" : ""} widerruflich, den Mitgliedsbeitrag ${zeit} von meinem Konto mittels Lastschrift einzuziehen. Zugleich weise ich mein Kreditinstitut an, die Lastschriften einzulösen. Ich kann innerhalb von acht Wochen, beginnend mit dem Belastungsdatum, die Erstattung des belasteten Betrages verlangen. Es gelten die mit meinem Kreditinstitut vereinbarten Bedingungen. Die Mandatsreferenz wird mir separat mitgeteilt.</p>
           <label class="check"><input type="checkbox" id="a_sepa" required><span>Ich erteile das SEPA-Lastschriftmandat.</span></label>
           <label class="check"><input type="checkbox" id="a_nl"><span>Ja, ich möchte den E-Mail-Newsletter mit Informationen zu Veranstaltungen und Aktionen des Vereins erhalten. Abmelden geht jederzeit per E-Mail an ${esc(V.kontakt.email)}.</span></label>
-          <label class="check"><input type="checkbox" id="a_ds" required><span>Ich habe die <a href="#datenschutz">Datenschutzhinweise</a> gelesen und bin mit der Speicherung meiner Daten für die Mitgliederverwaltung einverstanden.</span></label>
+          <label class="check"><input type="checkbox" id="a_ds" required><span>Ich habe die <a href="#datenschutz">Datenschutzhinweise nach Art. 13 DSGVO</a> gelesen und bin mit der Speicherung meiner Daten für die Mitgliederverwaltung einverstanden.</span></label>
         </fieldset>
         <input class="hp" type="text" id="a_web" tabindex="-1" autocomplete="off" aria-hidden="true">
         <p class="err" id="a_err" hidden></p>
