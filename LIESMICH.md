@@ -77,6 +77,15 @@ Voraussetzung: `supabase/erweiterung-verwaltung.sql` einmal im SQL-Editor ausfü
   von Satzung und Freistellungsbescheid ab – bitte mit dem Finanzamt/Steuerberater klären.
 - Datenbank: `supabase/erweiterung-firmen.sql` (bereits eingespielt).
 
+## Weitere Funktionen
+- **Übersicht** (erster Reiter der Verwaltung): offene Anträge und Zugangsanfragen, freie Helferplätze, nächster Termin, fällige Aufgaben, Sicherung.
+- **Neuigkeiten**: kurze Meldungen auf der Startseite (die drei neuesten).
+- **Galerie**: Fotos unter „Mehr → Eindrücke“. Nur Fotos ohne erkennbare Kinder oder mit Einwilligung.
+- **Checkliste**: wiederkehrende Vorstandsaufgaben, nur für den Vorstand sichtbar, beginnt jedes Jahr neu.
+- **Zuwendungsbestätigung**: erst Angaben aus dem Freistellungsbescheid unter Vereinsdaten → Rechtliches eintragen, dann im Mitglied „Bestätigung drucken“. Text vor der Nutzung mit Finanzamt oder Steuerberater abgleichen.
+- **Kalender**: Termine und eigene Helferdienste lassen sich als .ics in den Handykalender legen.
+- Datenbank: `supabase/erweiterung-inhalte.sql` (bereits eingespielt).
+
 ## 5. Änderungen am Programm veröffentlichen
 Nach jeder Änderung in `index.html` die `?v=1` hochzählen und in `sw.js` die `VERSION`
 (z. B. `fv-2`). Sonst sehen installierte Apps noch die alte Fassung.

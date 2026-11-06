@@ -98,6 +98,7 @@
     /* Inhalte, Bilder, Mitglieder, Zugänge (Demo) */
     async inhalteLaden() { return store.get("inhalte", null); },
     async inhaltSpeichern(k, wert) { const x = store.get("inhalte", {}) || {}; x[k] = wert; store.set("inhalte", x); },
+    async inhaltLesen(k) { const x = store.get("inhalte", {}) || {}; return x[k] ?? null; },
     async bildHochladen(blob) {
       return await new Promise((ok, bad) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = bad; r.readAsDataURL(blob); });
     },
@@ -228,6 +229,10 @@
         store.set("inhalteCache", x); return x;
       } catch (e) { return store.get("inhalteCache", null); }
       finally { clearTimeout(t); }
+    },
+    async inhaltLesen(k) {
+      const r = await req("/rest/v1/inhalte?select=wert&schluessel=eq." + encodeURIComponent(k), { auth: true });
+      return r && r[0] ? r[0].wert : null;
     },
     async inhaltSpeichern(k, wert) {
       await req("/rest/v1/inhalte?on_conflict=schluessel", { method: "POST", auth: true, body: { schluessel: k, wert, geaendert: new Date().toISOString() }, prefer: "resolution=merge-duplicates,return=minimal" });

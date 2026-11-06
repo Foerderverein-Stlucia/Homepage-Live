@@ -85,12 +85,13 @@
     try { await navigator.clipboard.writeText(url); toast("Link kopiert"); } catch (e) { toast(url); }
   }
   function ics(t) {
+    const ie = (x) => String(x).replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\r?\n/g, "\\n");
     const z = (s) => s.replace(/[-:]/g, "");
     const start = t.datum + "T" + (t.von || "00:00") + ":00", ende = t.datum + "T" + (t.bis || t.von || "23:59") + ":00";
     const body = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Foerderverein St. Lucia//DE", "BEGIN:VEVENT",
       "UID:" + t.id + "@foerderverein-st-lucia", "DTSTAMP:" + new Date().toISOString().replace(/[-:]/g, "").slice(0, 15) + "Z",
       "DTSTART;TZID=Europe/Berlin:" + z(start), "DTEND;TZID=Europe/Berlin:" + z(ende),
-      "SUMMARY:" + t.titel, "LOCATION:" + (t.ort || ""), "DESCRIPTION:" + (t.text || "").replace(/\n/g, " "), "END:VEVENT", "END:VCALENDAR"].join("\r\n");
+      "SUMMARY:" + ie(t.titel), "LOCATION:" + ie(t.ort || ""), "DESCRIPTION:" + ie(t.text || ""), "END:VEVENT", "END:VCALENDAR"].join("\r\n");
     const a = document.createElement("a");
     a.href = URL.createObjectURL(new Blob([body], { type: "text/calendar" }));
     a.download = t.titel.replace(/[^\wäöüÄÖÜß-]+/g, "_") + ".ics"; a.click();
@@ -114,6 +115,7 @@
   ];
   const MEHR = [
     { id: "start", t: "Startseite", s: "Zurück zum Anfang", f: "pink" },
+    { id: "galerie", t: "Eindrücke", s: "Fotos von Festen und Aktionen", f: "orange" },
     { id: "projekte", t: "Unsere Projekte", s: "Was wir schon geschafft haben", f: "pink" },
     { id: "verein", t: "Über den Verein", s: "Ziele, Vorstand, Satzung", f: "purple" },
     { id: "spenden", t: "Spenden", s: "Bankverbindung und Spendenquittung", f: "yellow" },
@@ -158,15 +160,17 @@
   function mehrMenue() {
     const theme = document.documentElement.dataset.theme || "";
     sheet(`<nav class="menu" aria-label="Weitere Seiten">
-      ${MEHR.map(m => `<a href="#${m.id}" data-zu style="--dot:var(--${m.f})"><span class="d"></span><span>${m.t}<small>${m.s}</small></span></a>`).join("")}
+      ${MEHR.filter(m => m.id !== "galerie" || (I.galerie || []).length).map(m => `<a href="#${m.id}" data-zu style="--dot:var(--${m.f})"><span class="d"></span><span>${m.t}<small>${m.s}</small></span></a>`).join("")}
       <hr>
-      ${installierbar() ? `<button id="instBtn"><span class="d" style="--dot:var(--green)"></span><span>App installieren<small>Auf den Startbildschirm legen</small></span></button>` : ""}
+      ${installierbar() && installEvt ? `<button id="instBtn"><span class="d" style="--dot:var(--green)"></span><span>App installieren<small>Auf den Startbildschirm legen</small></span></button>` : ""}
+      ${!PREVIEW && !standalone() ? `<button id="instHilfe"><span class="d" style="--dot:var(--green)"></span><span>App aufs Handy holen<small>Kurze Anleitung für iPhone und Android</small></span></button>` : ""}
       <button id="themeBtn"><span class="d" style="--dot:var(--ink)"></span><span>Darstellung: ${theme === "dark" ? "dunkel" : theme === "light" ? "hell" : "wie Gerät"}<small>Antippen zum Wechseln</small></span></button>
       <a href="#impressum" data-zu><span class="d" style="--dot:var(--line)"></span>Impressum</a>
       <a href="#datenschutz" data-zu><span class="d" style="--dot:var(--line)"></span>Datenschutz</a>
       <a href="#verwaltung" data-zu><span class="d" style="--dot:var(--line)"></span><span>Verwaltung<small>Nur für den Vorstand</small></span></a>
     </nav>`, (bg, zu) => {
       const ib = $("#instBtn", bg); if (ib) ib.onclick = () => { zu(); installieren(); };
+      const ih = $("#instHilfe", bg); if (ih) ih.onclick = () => { zu(); installAnleitung(istIOS ? "ios" : "android"); };
       $("#themeBtn", bg).onclick = () => {
         const next = theme === "" ? "light" : theme === "light" ? "dark" : "";
         if (next) document.documentElement.dataset.theme = next; else delete document.documentElement.dataset.theme;
@@ -181,15 +185,19 @@
   window.addEventListener("beforeinstallprompt", e => { e.preventDefault(); installEvt = e; if (aktuell() === "start") render(); });
   const istIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
   const standalone = () => matchMedia("(display-mode: standalone)").matches || navigator.standalone;
-  const installierbar = () => !PREVIEW && !standalone() && (installEvt || istIOS);
+  const installierbar = () => !PREVIEW && !standalone() && (installEvt || istIOS || matchMedia("(pointer:coarse)").matches);
   async function installieren() {
     if (installEvt) { installEvt.prompt(); const r = await installEvt.userChoice; installEvt = null; if (r.outcome === "accepted") toast("Wird installiert"); render(); return; }
-    sheet(`<h2>App auf das iPhone holen</h2>
-      <ol class="stack" style="--gap:10px;padding-left:1.2em;margin:16px 0">
-        <li>Unten in Safari auf <b>Teilen</b> tippen (Quadrat mit Pfeil nach oben).</li>
-        <li><b>Zum Home-Bildschirm</b> wählen.</li>
-        <li>Mit <b>Hinzufügen</b> bestätigen.</li></ol>
-      <button class="btn block" data-zu>Verstanden</button>`);
+    installAnleitung(istIOS ? "ios" : "android");
+  }
+  function installAnleitung(wahl) {
+    const ios = `<ol class="stack" style="--gap:8px;padding-left:1.2em;margin:10px 0 0"><li>Die Seite in <b>Safari</b> öffnen.</li><li>Unten auf <b>Teilen</b> tippen (Quadrat mit Pfeil nach oben).</li><li>Nach unten wischen und <b>Zum Home-Bildschirm</b> wählen.</li><li>Oben rechts auf <b>Hinzufügen</b> tippen.</li></ol>`;
+    const and = `<ol class="stack" style="--gap:8px;padding-left:1.2em;margin:10px 0 0"><li>Die Seite in <b>Chrome</b> öffnen.</li><li>Oben rechts auf die <b>drei Punkte</b> tippen.</li><li><b>App installieren</b> bzw. <b>Zum Startbildschirm hinzufügen</b> wählen.</li><li>Mit <b>Installieren</b> bestätigen.</li></ol>`;
+    sheet(`<h2>Als App aufs Handy</h2><p class="mute" style="margin-top:4px">Dann liegt das Symbol auf dem Startbildschirm und die Seite öffnet sich wie eine App.</p>
+      <div class="stack" style="--gap:16px;margin:16px 0">
+        <div class="card" style="box-shadow:none"><h3>iPhone und iPad</h3>${ios}</div>
+        <div class="card" style="box-shadow:none"><h3>Android</h3>${and}<p class="mute small" style="margin-top:8px">Bei Samsung Internet oder Firefox heißt der Punkt ähnlich, meist im Menü unter „Hinzufügen zu“.</p></div>
+      </div><button class="btn block" data-zu>Verstanden</button>`);
   }
 
   /* ---------- Router ---------- */
@@ -251,6 +259,18 @@
 
   /* ================= SEITEN ================= */
 
+  function neuigkeitenHtml() {
+    const n = (I.neuigkeiten || []).slice().sort((a, b) => String(b.datum).localeCompare(String(a.datum))).slice(0, 3);
+    if (!n.length) return "";
+    return `<section><div class="sec-head"><h2>Neuigkeiten</h2></div><div class="list">${n.map(x => `<article class="card" style="--dot:var(--pink)"><span class="eyebrow">${esc(datumKurz(x.datum))} ${dt(x.datum).getFullYear()}</span><h3>${esc(x.titel)}</h3>${x.text ? `<p class="prose" style="margin-top:6px;white-space:pre-line">${esc(x.text)}</p>` : ""}</article>`).join("")}</div></section>`;
+  }
+
+  SEITEN.galerie = (v) => {
+    const g = (I.galerie || []).slice().sort((a, b) => String(b.datum || "").localeCompare(String(a.datum || "")));
+    v.innerHTML = kopf("orange", "Eindrücke", "Unsere Feste und Aktionen", "Ein paar Bilder aus dem Vereinsleben.") +
+      (g.length ? `<div class="grid2">${g.map(x => `<figure class="card" style="padding:0;overflow:hidden;margin:0"><img src="${esc(x.bild)}" alt="${esc(x.text || "")}" loading="lazy" style="width:100%;display:block;aspect-ratio:4/3;object-fit:cover">${x.text || x.datum ? `<figcaption style="padding:10px 14px"><b>${esc(x.text || "")}</b>${x.datum ? `<div class="mute small">${datumKurz(x.datum)} ${dt(x.datum).getFullYear()}</div>` : ""}</figcaption>` : ""}</figure>`).join("")}</div>` : `<div class="card"><p class="mute">Noch keine Bilder.</p></div>`);
+  };
+
   SEITEN.start = async (v) => {
     const naechste = termineKommend().slice(0, 2);
     let listen = []; try { listen = await D.listen(); } catch (e) {}
@@ -265,6 +285,7 @@
         <div class="hero-actions"><a class="btn" href="#mitglied">Mitglied werden</a><a class="btn sec" href="#mithelfen">Beim nächsten Fest helfen</a></div>
       </section>
       ${installierbar() ? `<section><div class="notice">${ICON.install}<div class="stack" style="--gap:8px"><p><b>Als App aufs Handy legen.</b> Dann habt ihr Termine und Listen mit einem Tipp.</p><div><button class="btn small" id="instStart">App installieren</button></div></div></div></section>` : ""}
+      ${neuigkeitenHtml()}
       <section>
         <div class="sec-head"><h2>Als Nächstes</h2><a href="#termine">Alle Termine</a></div>
         <div class="list">${naechste.map(t => terminKarte(t, { kompakt: true })).join("") || `<p class="mute">Gerade stehen keine Termine an.</p>`}</div>
@@ -320,6 +341,7 @@
     if (!l) { v.innerHTML = zurueck("mithelfen", "Alle Listen") + `<div class="card"><h2>Liste nicht gefunden</h2><p class="mute">Vielleicht wurde sie schon geschlossen.</p></div>`; return; }
     const mein = D.meine.alle();
     const termin = I.termine.find(t => t.liste === l.id);
+    const hatPlatz = termin && l.plaetze.some(p => mein.some(m => m.platz_id === p.id));
     v.innerHTML = zurueck("mithelfen", "Alle Listen") + kopf("green", "Eintrageliste", esc(l.titel), l.datum ? datumLang(l.datum) + (termin && termin.von ? ", " + termin.von + " Uhr" : "") : "") +
       (l.beschreibung ? `<div class="notice" style="margin-bottom:16px">${ICON.info}<p>${esc(l.beschreibung)}</p></div>` : "") +
       `<div class="card">${l.plaetze.map(p => {
@@ -335,8 +357,10 @@
       }).join("")}</div>
       <div class="row noprint" style="margin-top:16px">
         <a class="btn sec small" href="#aushang-${esc(l.id)}">${ICON.qr}Aushang mit QR-Code</a>
-        <button class="btn sec small" id="teilenBtn">${ICON.teilen}Liste teilen</button></div>`;
+        <button class="btn sec small" id="teilenBtn">${ICON.teilen}Liste teilen</button>
+        ${hatPlatz && !PREVIEW ? `<button class="btn small" id="kalBtn">${ICON.kal}Termin in meinen Kalender</button>` : ""}</div>`;
     $("#teilenBtn").onclick = () => teilen(l.titel, "liste-" + l.id);
+    const kb = $("#kalBtn"); if (kb) kb.onclick = () => ics(termin);
     $$("[data-platz]", v).forEach(b => b.onclick = () => eintragDialog(l, l.plaetze.find(p => String(p.id) === b.dataset.platz)));
     $$("[data-aus]", v).forEach(b => b.onclick = async () => {
       b.disabled = true;
@@ -369,7 +393,7 @@
           const token = await D.eintragen(p.id, name, kontakt);
           D.meine.add({ token, platz_id: p.id, liste_id: l.id, name: D.anzeigename(name) });
           try { localStorage.setItem("fv_name", name); } catch (e) {}
-          zu(); toast("Danke! Ihr seid eingetragen."); render();
+          zu(); toast(I.termine.some(t => t.liste === l.id) && !PREVIEW ? "Danke! Ihr seid eingetragen. Den Termin könnt ihr unten in den Kalender legen." : "Danke! Ihr seid eingetragen."); render();
         } catch (ex) { err.textContent = ex.message; err.hidden = false; btn.disabled = false; btn.textContent = "Verbindlich eintragen"; }
       };
     });
@@ -614,6 +638,8 @@
     if (x.verein && typeof x.verein === "object") I.verein = Object.assign({}, I.verein, x.verein);
     if (Array.isArray(x.projekte)) I.projekte = x.projekte;
     if (Array.isArray(x.termine)) I.termine = x.termine;
+    if (Array.isArray(x.neuigkeiten)) I.neuigkeiten = x.neuigkeiten;
+    if (Array.isArray(x.galerie)) I.galerie = x.galerie;
     V = I.verein;
   }
 

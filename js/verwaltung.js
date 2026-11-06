@@ -14,8 +14,8 @@
   const PREVIEW = !!window.FV_PREVIEW;
   const FARBEN = [["pink", "Pink"], ["blue", "Blau"], ["green", "Grün"], ["orange", "Orange"], ["purple", "Lila"], ["yellow", "Gelb"], ["red", "Rot"], ["teal", "Petrol"]];
   const SYMBOLE = [["stern", "Stern"], ["rutsche", "Rutsche"], ["wasser", "Wasser"], ["reck", "Turnen"], ["baum", "Baum/Garten"], ["steine", "Steine"], ["wippe", "Wippe"], ["luft", "Luft"], ["buch", "Buch"], ["theater", "Theater"], ["musik", "Musik"], ["kueche", "Küche"], ["ausflug", "Ausflug"], ["herz", "Herz"]];
-  const TABS = [["antraege", "Anträge"], ["mitglieder", "Mitglieder"], ["listen", "Eintragelisten"], ["termine", "Termine"], ["projekte", "Projekte"], ["verein", "Vereinsdaten"], ["zugaenge", "Zugänge"]];
-  let tab = "antraege";
+  const TABS = [["uebersicht", "Übersicht"], ["antraege", "Anträge"], ["mitglieder", "Mitglieder"], ["listen", "Eintragelisten"], ["termine", "Termine"], ["neuigkeiten", "Neuigkeiten"], ["projekte", "Projekte"], ["galerie", "Galerie"], ["aufgaben", "Checkliste"], ["verein", "Vereinsdaten"], ["zugaenge", "Zugänge"]];
+  let tab = "uebersicht";
 
   /* ---------- kleine Helfer ---------- */
   const feld = (id, label, wert, o = {}) => `<div class="field${o.cls ? " " + o.cls : ""}"><label for="${id}">${label}</label>${
@@ -185,6 +185,7 @@
           ${feld("m_st", "Status", m.status || "aktiv", { k: "status", type: "select", opts: [["aktiv", "aktiv"], ["ausgetreten", "ausgetreten"]] })}
           ${feld("m_notiz", "Notiz", m.notiz, { k: "notiz", type: "textarea", rows: 2 })}
         </fieldset>
+        ${neu ? "" : bescheinigungHtml(m)}
         <p class="err" id="mf_err" hidden></p>
         <div class="row"><button class="btn" type="submit">Speichern</button><button class="btn sec" type="button" data-zu>Abbrechen</button>${neu ? "" : `<button class="btn ghost" type="button" id="mDel" style="color:var(--err)">Löschen</button>`}</div>
         <div id="mDelBox"></div></form>`, (bg, zu) => {
@@ -204,6 +205,15 @@
         catch (ex) { er.textContent = ex.message; er.hidden = false; }
       };
       const del = $("#mDel", bg);
+      const zb = $("#zbDruck", bg);
+      if (zb) {
+        $$("#zb_betrag, #zb_zeit", bg).forEach(i => i.onkeydown = (e) => { if (e.key === "Enter") e.preventDefault(); });
+        zb.onclick = () => {
+          const betrag = parseFloat(String($("#zb_betrag", bg).value).replace(",", "."));
+          if (!(betrag > 0)) { toast("Bitte einen Betrag eintragen."); return; }
+          bescheinigungDrucken(m, { art: $("#zb_art", bg).value, betrag, zeitraum: $("#zb_zeit", bg).value.trim() });
+        };
+      }
       if (del) del.onclick = () => sicherheitsfrage($("#mDelBox", bg), `<b>${esc(m.vorname)} ${esc(m.nachname)} wirklich löschen?</b> Für Ausgetretene besser den Status auf „ausgetreten“ setzen, damit die Daten für die Aufbewahrungsfrist erhalten bleiben.`, "Endgültig löschen",
         async () => { await D.mitgliedLoeschen(m.id); zu(); toast("Gelöscht"); A.render(); }, true);
     });
@@ -524,7 +534,12 @@
           <div class="cols">${feld("v_zeit", "Zeitraum", V.beitragZeitraum, { k: "beitragZeitraum", ph: "pro Kindergartenjahr" })}${feld("v_glid", "Gläubiger-ID (SEPA)", V.glaeubigerId, { k: "glaeubigerId", hint: "Leer lassen, solange keine vorhanden ist." })}</div></div>
         <div class="card stack" style="--gap:14px"><h2>Rechtliches</h2>
           ${feld("v_reg", "Registergericht und Nummer", V.registergericht, { k: "registergericht", ph: "z. B. Amtsgericht Kleve, VR 1234" })}
-          ${haken("v_gem", "Der Verein ist als gemeinnützig anerkannt (ändert den Text zur Spendenquittung)", V.gemeinnuetzig, "gemeinnuetzig")}</div>
+          ${haken("v_gem", "Der Verein ist als gemeinnützig anerkannt (ändert den Text zur Spendenquittung)", V.gemeinnuetzig, "gemeinnuetzig")}
+          <p class="mute small">Für Zuwendungsbestätigungen (Spendenbescheinigung), Angaben genau wie im Bescheid des Finanzamts:</p>
+          <div class="cols">${feld("v_bart", "Bescheid", (V.bescheid || {}).art || "Freistellungsbescheid", { k: "bescheid.art", type: "select", opts: [["Freistellungsbescheid", "Freistellungsbescheid"], ["Anlage zum Körperschaftsteuerbescheid", "Anlage zum Körperschaftsteuerbescheid"]] })}${feld("v_bdat", "Datum des Bescheids", (V.bescheid || {}).datum, { k: "bescheid.datum", type: "date" })}</div>
+          <div class="cols">${feld("v_bfa", "Finanzamt", (V.bescheid || {}).finanzamt, { k: "bescheid.finanzamt" })}${feld("v_bnr", "Steuernummer", (V.bescheid || {}).steuernr, { k: "bescheid.steuernr" })}</div>
+          ${feld("v_bzeit", "Letzter Veranlagungszeitraum laut Bescheid", (V.bescheid || {}).zeitraum, { k: "bescheid.zeitraum", ph: "z. B. 2023" })}
+          ${feld("v_bzweck", "Begünstigter Zweck laut Bescheid", (V.bescheid || {}).zweck, { k: "bescheid.zweck", type: "textarea", rows: 2, ph: "Wortlaut aus dem Bescheid übernehmen" })}</div>
         <div class="card stack" style="--gap:14px"><h2>Kita</h2>
           ${feld("v_kadr", "Adresse der Kita", ki.adresse, { k: "kitaInfo.adresse" })}
           ${feld("v_ktext", "Text über die Kita", ki.text, { k: "kitaInfo.text", type: "textarea" })}
@@ -551,7 +566,7 @@
         kontakt: { ...V.kontakt, ...d.kontakt }, papierAntrag: d.papierAntrag, bank: { ...V.bank, ...d.bank }, beitraege,
         mindestbeitrag: parseFloat(String(d.mindestbeitrag).replace(",", ".")) || Math.min(...beitraege),
         beitraegeFirma: beitraegeFirma.length ? beitraegeFirma : [50, 100, 250], mindestbeitragFirma: parseFloat(String(d.mindestbeitragFirma).replace(",", ".")) || (beitraegeFirma.length ? Math.min(...beitraegeFirma) : 50), beitragZeitraum: d.beitragZeitraum || "pro Jahr",
-        glaeubigerId: d.glaeubigerId, registergericht: d.registergericht, gemeinnuetzig: !!d.gemeinnuetzig, kitaInfo: { ...V.kitaInfo, ...d.kitaInfo } };
+        glaeubigerId: d.glaeubigerId, registergericht: d.registergericht, gemeinnuetzig: !!d.gemeinnuetzig, bescheid: { ...(V.bescheid || {}), ...(d.bescheid || {}) }, kitaInfo: { ...V.kitaInfo, ...d.kitaInfo } };
       delete neu.demoListen;
       try { await D.inhaltSpeichern("verein", neu); A.aktualisieren({ verein: neu }); toast("Vereinsdaten gespeichert"); }
       catch (ex) { er.textContent = ex.message; er.hidden = false; }
@@ -637,15 +652,215 @@
     };
     $("#sicherung", box).onclick = async (e) => {
       e.target.disabled = true;
-      try {
-        const [mitglieder, antraege, listen] = await Promise.all([D.mitglieder(), D.antraege(), D.listen({ alle: true })]);
-        const eintraege = {}; for (const l of listen) eintraege[l.id] = await D.eintraegeVoll(l.id);
-        const daten = { erstellt: new Date().toISOString(), verein: IN().verein, termine: IN().termine, projekte: IN().projekte, listen, eintraege, antraege, mitglieder };
-        herunterladen("foerderverein-sicherung-" + heuteISO() + ".json", JSON.stringify(daten, null, 2), "application/json");
-      } catch (ex) { toast(ex.message); }
+      try { await sicherungErstellen(); } catch (ex) { toast(ex.message); }
       e.target.disabled = false;
     };
   };
+
+  /* ---------- Sicherung (auch von der Übersicht aus) ---------- */
+  async function sicherungErstellen() {
+    const [mitglieder, antraege, listen, aufgaben] = await Promise.all([D.mitglieder(), D.antraege(), D.listen({ alle: true }), D.inhaltLesen("aufgaben").catch(() => null)]);
+    const eintraege = {}; for (const l of listen) eintraege[l.id] = await D.eintraegeVoll(l.id);
+    const daten = { erstellt: new Date().toISOString(), verein: IN().verein, termine: IN().termine, projekte: IN().projekte, neuigkeiten: IN().neuigkeiten || [], galerie: IN().galerie || [], aufgaben: aufgaben || [], listen, eintraege, antraege, mitglieder };
+    herunterladen("foerderverein-sicherung-" + heuteISO() + ".json", JSON.stringify(daten, null, 2), "application/json");
+    try { localStorage.setItem("fv_sicherung", heuteISO()); } catch (e) {}
+  }
+  const letzteSicherung = () => { try { return localStorage.getItem("fv_sicherung") || ""; } catch (e) { return ""; } };
+
+  /* ---------- Übersicht ---------- */
+  TAB.uebersicht = async (box) => {
+    const sicher = (p) => p.catch(() => null);
+    const [antr, zug, listen, mitgl, aufg] = await Promise.all([sicher(D.antraege()), sicher(D.zugangAnfragen()), sicher(D.listen({ alle: true })), sicher(D.mitglieder()), sicher(D.inhaltLesen("aufgaben"))]);
+    const h = A.heute(), jahr = h.getFullYear(), monat = h.getMonth() + 1;
+    const neu = (antr || []).filter(x => x.status === "neu").length;
+    const aktiv = (mitgl || []).filter(m => m.status !== "ausgetreten");
+    const kommendeListen = (listen || []).filter(l => !l.datum || A.dt(l.datum) >= h);
+    const freiePlaetze = kommendeListen.reduce((s, l) => s + A.frei(l), 0);
+    const termin = (IN().termine || []).filter(t => A.dt(t.datum) >= h).sort((a, b) => String(a.datum).localeCompare(String(b.datum)))[0];
+    const aufgaben = (aufg || AUFGABEN_START).filter(a => a.erledigt !== jahr && +a.monat <= monat);
+    const kachel = (zahl, text, ziel, farbe, extra) => `<button class="card" data-goto="${ziel}" style="--dot:var(--${farbe});text-align:left;cursor:pointer;border:0;font:inherit;color:inherit"><div style="font:800 2rem var(--head,inherit)" class="tnum">${zahl}</div><div><b>${text}</b>${extra ? `<div class="mute small">${extra}</div>` : ""}</div></button>`;
+    const ls = letzteSicherung();
+    box.innerHTML = `<h1 style="font-size:1.6rem;margin-bottom:12px">Was ist los?</h1>
+      <div class="grid2">
+        ${kachel(neu, neu === 1 ? "neuer Antrag" : "neue Anträge", "antraege", "pink", neu ? "Warten auf Übernahme" : "Nichts offen")}
+        ${zug === null ? "" : kachel(zug.length, zug.length === 1 ? "Zugangsanfrage" : "Zugangsanfragen", "zugaenge", "teal", zug.length ? "Bitte prüfen und freischalten" : "Nichts offen")}
+        ${mitgl === null ? "" : kachel(aktiv.length, "aktive Mitglieder", "mitglieder", "blue", aktiv.filter(m => m.art === "firma").length ? "davon " + aktiv.filter(m => m.art === "firma").length + " Firmen" : "")}
+        ${listen === null ? "" : kachel(freiePlaetze, "freie Helferplätze", "listen", "green", kommendeListen.length + " offene Listen")}
+      </div>
+      <div class="card stack" style="--gap:6px;margin-top:12px"><h2>Nächster Termin</h2>${termin ? `<p><b>${esc(termin.titel)}</b><br><span class="mute">${esc(A.datumLang(termin.datum))}${termin.von ? ", " + esc(termin.von) + " Uhr" : ""}</span></p>` : `<p class="mute">Kein Termin eingetragen.</p>`}
+        <div><button class="btn sec small" data-goto="termine">Termine bearbeiten</button></div></div>
+      <div class="card stack" style="--gap:6px;margin-top:12px"><h2>Jetzt zu erledigen</h2>
+        ${aufgaben.length ? `<ul style="margin:0;padding-left:1.2em">${aufgaben.slice(0, 5).map(a => `<li>${esc(a.titel)}</li>`).join("")}</ul>` : `<p class="mute">Alles erledigt, was bis jetzt dran war.</p>`}
+        <div><button class="btn sec small" data-goto="aufgaben">Zur Checkliste</button></div></div>
+      <div class="card stack" style="--gap:6px;margin-top:12px"><h2>Datensicherung</h2>
+        <p class="mute small">Mitglieder, Anträge, Listen und alle Inhalte als eine Datei. ${ls ? "Letzte Sicherung auf diesem Gerät: " + esc(new Date(ls).toLocaleDateString("de-DE")) + "." : "Auf diesem Gerät wurde noch nie gesichert."}</p>
+        <div><button class="btn sec" id="sichJetzt">${ICON.install}Jetzt sichern</button></div></div>`;
+    $$("[data-goto]", box).forEach(b => b.onclick = () => { tab = b.dataset.goto; A.render(); });
+    $("#sichJetzt", box).onclick = async (e) => { e.target.disabled = true; try { await sicherungErstellen(); toast("Sicherung heruntergeladen"); } catch (ex) { toast(ex.message); } e.target.disabled = false; TAB.uebersicht(box); };
+  };
+
+  /* ---------- Neuigkeiten ---------- */
+  TAB.neuigkeiten = async (box) => {
+    const arr = (IN().neuigkeiten || []).slice().sort((a, b) => String(b.datum).localeCompare(String(a.datum)));
+    box.innerHTML = `<div class="row" style="justify-content:space-between;margin-bottom:8px"><h1 style="font-size:1.6rem">Neuigkeiten</h1><button class="btn small" id="nNeu">${ICON.plus}Neue Meldung</button></div>
+      <p class="mute" style="margin-bottom:12px">Kurze Meldungen für die Startseite, zum Beispiel „Danke für die Spenden beim Laternenfest“. Angezeigt werden die drei neuesten.</p>
+      <div class="list">${arr.map(n => `<div class="card row" style="justify-content:space-between;--dot:var(--pink)"><div style="min-width:0"><span class="eyebrow">${esc(datumKurzV(n.datum))}</span><h3>${esc(n.titel)}</h3></div><button class="btn sec small" data-ed="${esc(n.id)}">Bearbeiten</button></div>`).join("") || `<div class="card"><p class="mute">Noch keine Meldungen.</p></div>`}</div>`;
+    const speichern = async (neuArr) => { await D.inhaltSpeichern("neuigkeiten", neuArr); A.aktualisieren({ neuigkeiten: neuArr }); };
+    const editor = (n) => {
+      const neu = !n; n = n || { datum: heuteISO(), titel: "", text: "" };
+      sheet(`<h2>${neu ? "Neue Meldung" : "Meldung bearbeiten"}</h2><form id="nf" style="margin-top:12px" novalidate>
+        ${feld("n_datum", "Datum", n.datum, { k: "datum", type: "date" })}${feld("n_titel", "Überschrift", n.titel, { k: "titel", attrs: 'maxlength="100"' })}
+        ${feld("n_text", "Text", n.text, { k: "text", type: "textarea", rows: 4 })}
+        <p class="err" id="nf_err" hidden></p>
+        <div class="row"><button class="btn" type="submit">Speichern</button><button class="btn sec" type="button" data-zu>Abbrechen</button>${neu ? "" : `<button class="btn ghost" type="button" id="nDel" style="color:var(--err)">Löschen</button>`}</div><div id="nBox"></div></form>`, (bg, zu) => {
+        const del = $("#nDel", bg);
+        if (del) del.onclick = () => sicherheitsfrage($("#nBox", bg), "<b>Meldung löschen?</b>", "Löschen", async () => { await speichern((IN().neuigkeiten || []).filter(x => x.id !== n.id)); zu(); toast("Gelöscht"); });
+        $("#nf", bg).onsubmit = async (e) => {
+          e.preventDefault(); const er = $("#nf_err", bg); er.hidden = true;
+          const d = datenSammeln(bg);
+          if (!d.titel || !d.datum) { er.textContent = "Bitte Datum und Überschrift eintragen."; er.hidden = false; return; }
+          const a2 = (IN().neuigkeiten || []).slice();
+          if (neu) a2.push({ ...d, id: "n" + Date.now() }); else { const i = a2.findIndex(x => x.id === n.id); a2[i] = { ...a2[i], ...d }; }
+          try { await speichern(a2); zu(); toast("Gespeichert"); } catch (ex) { er.textContent = ex.message; er.hidden = false; }
+        };
+      });
+    };
+    $("#nNeu", box).onclick = () => editor(null);
+    $$("[data-ed]", box).forEach(b => b.onclick = () => editor(arr.find(x => x.id === b.dataset.ed)));
+  };
+  const datumKurzV = (iso) => iso ? new Date(iso + "T00:00:00").toLocaleDateString("de-DE") : "";
+
+  /* ---------- Galerie ---------- */
+  TAB.galerie = async (box) => {
+    const arr = (IN().galerie || []).slice();
+    box.innerHTML = `<div class="row" style="justify-content:space-between;margin-bottom:8px"><h1 style="font-size:1.6rem">Galerie</h1><button class="btn small" id="gNeu">${ICON.plus}Foto hinzufügen</button></div>
+      <div class="notice" style="margin-bottom:12px">${ICON.info}<p>Bitte nur Fotos ohne erkennbare Kinder oder mit schriftlicher Einwilligung der Eltern veröffentlichen. Die Seite ist öffentlich.</p></div>
+      <div class="grid2">${arr.map(g => `<div class="card stack" style="--gap:6px;padding:10px"><img src="${esc(g.bild)}" alt="" loading="lazy" style="width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:10px"><b>${esc(g.text || "")}</b><div class="mute small">${esc(datumKurzV(g.datum))}</div><button class="btn sec small" data-ed="${esc(g.id)}">Bearbeiten</button></div>`).join("") || `<div class="card"><p class="mute">Noch keine Fotos.</p></div>`}</div>`;
+    const speichern = async (neuArr) => { await D.inhaltSpeichern("galerie", neuArr); A.aktualisieren({ galerie: neuArr }); };
+    const editor = (g) => {
+      const neu = !g; g = g || { bild: "", text: "", datum: heuteISO() }; let bild = g.bild;
+      sheet(`<h2>${neu ? "Foto hinzufügen" : "Foto bearbeiten"}</h2><form id="gf" style="margin-top:12px" novalidate>
+        <div id="gVor">${bild ? `<img src="${esc(bild)}" alt="" style="max-height:200px;border-radius:12px">` : `<p class="mute small">Noch kein Foto.</p>`}</div>
+        <div class="row"><label class="btn sec small" for="g_datei" style="cursor:pointer">${bild ? "Foto ersetzen" : "Foto auswählen"}</label><input id="g_datei" type="file" accept="image/*" class="sr"></div>
+        ${feld("g_text", "Bildunterschrift", g.text, { k: "text", attrs: 'maxlength="120"' })}${feld("g_datum", "Datum", g.datum, { k: "datum", type: "date" })}
+        <p class="err" id="gf_err" hidden></p>
+        <div class="row"><button class="btn" type="submit">Speichern</button><button class="btn sec" type="button" data-zu>Abbrechen</button>${neu ? "" : `<button class="btn ghost" type="button" id="gDel" style="color:var(--err)">Löschen</button>`}</div><div id="gBox"></div></form>`, (bg, zu) => {
+        $("#g_datei", bg).onchange = async (e) => {
+          const datei = e.target.files[0]; if (!datei) return; $("#gVor", bg).innerHTML = `<p class="mute small">Foto wird hochgeladen …</p>`;
+          try { const blob = await verkleinern(datei, D.live ? 1600 : 800); bild = await D.bildHochladen(blob, datei.name); $("#gVor", bg).innerHTML = `<img src="${esc(bild)}" alt="" style="max-height:200px;border-radius:12px">`; }
+          catch (ex) { $("#gVor", bg).innerHTML = `<p class="err">${esc(ex.message)}</p>`; }
+        };
+        const del = $("#gDel", bg);
+        if (del) del.onclick = () => sicherheitsfrage($("#gBox", bg), "<b>Foto aus der Galerie entfernen?</b>", "Entfernen", async () => { await speichern((IN().galerie || []).filter(x => x.id !== g.id)); zu(); toast("Entfernt"); });
+        $("#gf", bg).onsubmit = async (e) => {
+          e.preventDefault(); const er = $("#gf_err", bg); er.hidden = true;
+          if (!bild) { er.textContent = "Bitte ein Foto auswählen."; er.hidden = false; return; }
+          const d = datenSammeln(bg), a2 = (IN().galerie || []).slice();
+          if (neu) a2.push({ ...d, bild, id: "g" + Date.now() }); else { const i = a2.findIndex(x => x.id === g.id); a2[i] = { ...a2[i], ...d, bild }; }
+          try { await speichern(a2); zu(); toast("Gespeichert"); } catch (ex) { er.textContent = ex.message; er.hidden = false; }
+        };
+      });
+    };
+    $("#gNeu", box).onclick = () => editor(null);
+    $$("[data-ed]", box).forEach(b => b.onclick = () => editor(arr.find(x => x.id === b.dataset.ed)));
+  };
+
+  /* ---------- Checkliste für den Vorstand (nicht öffentlich) ---------- */
+  const AUFGABEN_START = [
+    { id: "a1", titel: "Spendenbescheinigungen für das Vorjahr ausstellen", monat: 1 },
+    { id: "a2", titel: "Kassenprüfung durch die Kassenprüfer", monat: 2 },
+    { id: "a3", titel: "Mitgliederversammlung einladen und durchführen", monat: 3 },
+    { id: "a4", titel: "Mitgliederliste pflegen (Ein- und Austritte)", monat: 6 },
+    { id: "a5", titel: "Vorankündigung des Lastschrifteinzugs an die Mitglieder", monat: 9 },
+    { id: "a6", titel: "Mitgliedsbeiträge per SEPA einziehen", monat: 10 },
+    { id: "a7", titel: "Termine und Projekte auf der Homepage aktualisieren", monat: 11 },
+    { id: "a8", titel: "Datensicherung herunterladen und aufbewahren", monat: 12 }
+  ].map(a => ({ ...a, erledigt: null }));
+  const MONATE = ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Dezember"];
+  TAB.aufgaben = async (box) => {
+    const jahr = new Date().getFullYear();
+    let arr = await D.inhaltLesen("aufgaben"); if (!Array.isArray(arr)) arr = AUFGABEN_START.map(a => ({ ...a }));
+    arr = arr.slice().sort((a, b) => +a.monat - +b.monat);
+    const speichern = async (neuArr) => { await D.inhaltSpeichern("aufgaben", neuArr); TAB.aufgaben(box); };
+    box.innerHTML = `<div class="row" style="justify-content:space-between;margin-bottom:8px"><h1 style="font-size:1.6rem">Checkliste ${jahr}</h1><button class="btn small" id="aNeu">${ICON.plus}Aufgabe</button></div>
+      <p class="mute" style="margin-bottom:12px">Wiederkehrende Aufgaben im Vereinsjahr. Die Monate sind Vorschläge, bitte nach eurer Satzung anpassen. Jedes Jahr beginnt die Liste automatisch neu. Nur der Vorstand sieht sie.</p>
+      <div class="list">${arr.map(a => `<div class="card row" style="justify-content:space-between;--dot:var(--${a.erledigt === jahr ? "green" : "orange"})"><label class="check" style="flex:1 1 220px;min-width:0"><input type="checkbox" data-done="${esc(a.id)}" ${a.erledigt === jahr ? "checked" : ""}><span><b>${esc(a.titel)}</b><br><span class="mute small">bis ${MONATE[(+a.monat || 1) - 1]}${a.notiz ? " · " + esc(a.notiz) : ""}</span></span></label><button class="btn ghost small" data-ed="${esc(a.id)}">Bearbeiten</button></div>`).join("")}</div>`;
+    $$("[data-done]", box).forEach(c => c.onchange = async () => { const x = arr.find(a => a.id === c.dataset.done); x.erledigt = c.checked ? jahr : null; try { await speichern(arr); } catch (e) { toast(e.message); } });
+    const editor = (a) => {
+      const neu = !a; a = a || { titel: "", monat: new Date().getMonth() + 1, notiz: "", erledigt: null };
+      sheet(`<h2>${neu ? "Neue Aufgabe" : "Aufgabe bearbeiten"}</h2><form id="af" style="margin-top:12px" novalidate>
+        ${feld("a_titel", "Aufgabe", a.titel, { k: "titel" })}
+        ${feld("a_monat", "Erledigen bis Ende", a.monat, { k: "monat", type: "select", opts: MONATE.map((m, i) => [i + 1, m]) })}
+        ${feld("a_notiz", "Notiz (freiwillig)", a.notiz, { k: "notiz" })}
+        <p class="err" id="af_err" hidden></p>
+        <div class="row"><button class="btn" type="submit">Speichern</button><button class="btn sec" type="button" data-zu>Abbrechen</button>${neu ? "" : `<button class="btn ghost" type="button" id="aDel" style="color:var(--err)">Löschen</button>`}</div><div id="aBox"></div></form>`, (bg, zu) => {
+        const del = $("#aDel", bg);
+        if (del) del.onclick = () => sicherheitsfrage($("#aBox", bg), "<b>Aufgabe löschen?</b>", "Löschen", async () => { await speichern(arr.filter(x => x.id !== a.id)); zu(); });
+        $("#af", bg).onsubmit = async (e) => {
+          e.preventDefault(); const er = $("#af_err", bg); er.hidden = true;
+          const d = datenSammeln(bg); d.monat = +d.monat;
+          if (d.titel.length < 3) { er.textContent = "Bitte die Aufgabe beschreiben."; er.hidden = false; return; }
+          const a2 = arr.slice();
+          if (neu) a2.push({ ...d, id: "a" + Date.now(), erledigt: null }); else { const i = a2.findIndex(x => x.id === a.id); a2[i] = { ...a2[i], ...d }; }
+          try { await speichern(a2); zu(); } catch (ex) { er.textContent = ex.message; er.hidden = false; }
+        };
+      });
+    };
+    $("#aNeu", box).onclick = () => editor(null);
+    $$("[data-ed]", box).forEach(b => b.onclick = () => editor(arr.find(x => x.id === b.dataset.ed)));
+  };
+
+  /* ---------- Spendenbescheinigung ---------- */
+  const E19 = ["null", "ein", "zwei", "drei", "vier", "fünf", "sechs", "sieben", "acht", "neun", "zehn", "elf", "zwölf", "dreizehn", "vierzehn", "fünfzehn", "sechzehn", "siebzehn", "achtzehn", "neunzehn"];
+  const ZEHN = ["", "", "zwanzig", "dreißig", "vierzig", "fünfzig", "sechzig", "siebzig", "achtzig", "neunzig"];
+  const unter100 = (n) => n < 20 ? E19[n] : (n % 10 ? E19[n % 10] + "und" : "") + ZEHN[Math.floor(n / 10)];
+  const unter1000 = (n) => (n >= 100 ? E19[Math.floor(n / 100)] + "hundert" : "") + (n % 100 ? unter100(n % 100) : "");
+  function betragInWorten(b) {
+    const cent = Math.round(b * 100), eu = Math.floor(cent / 100), ct = cent % 100;
+    let w = eu === 0 ? "null" : eu < 1000 ? unter1000(eu) : (Math.floor(eu / 1000) === 1 ? "eintausend" : unter1000(Math.floor(eu / 1000)) + "tausend") + unter1000(eu % 1000);
+    w = w + " Euro" + (ct ? " und " + unter100(ct) + " Cent" : "");
+    return w.charAt(0).toUpperCase() + w.slice(1);
+  }
+  function bescheinigungDrucken(m, o) {
+    const V = IN().verein, B = V.bescheid || {}, k = V.kontakt || {};
+    const betrag = parseFloat(String(o.betrag).replace(",", "."));
+    const name = m.art === "firma" ? m.firma : (m.vorname + " " + m.nachname).trim();
+    const anschrift = [m.art === "firma" ? m.vorname + " " + m.nachname : "", m.strasse, (m.plz + " " + m.ort).trim()].filter(x => x && x.trim()).join(", ");
+    const eur = new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" }).format(betrag);
+    const dat = (iso) => iso ? new Date(iso + "T00:00:00").toLocaleDateString("de-DE") : "";
+    const art = o.art === "spende" ? "Geldzuwendung" : "Mitgliedsbeitrag";
+    const html = `<!doctype html><html lang="de"><head><meta charset="utf-8"><title>Zuwendungsbestätigung ${esc(name)} ${esc(o.zeitraum)}</title>
+<style>body{font:12pt/1.45 Arial,Helvetica,sans-serif;color:#000;margin:20mm 20mm}h1{font-size:13pt;margin:0 0 14pt}table{border-collapse:collapse;width:100%;margin:10pt 0}td{padding:4pt 0;vertical-align:top}.l{width:42%}.s{font-size:10pt}.sig{margin-top:44pt;border-top:1px solid #000;width:60%;padding-top:4pt;font-size:10pt}@media print{.np{display:none}}</style></head><body>
+<p class="np"><button onclick="print()">Drucken</button></p>
+<p><b>${esc(V.name)}</b><br>${esc(k.adresse || "")}</p>
+<h1>Bestätigung über Geldzuwendungen/Mitgliedsbeitrag im Sinne des § 10b des Einkommensteuergesetzes an eine der in § 5 Abs. 1 Nr. 9 des Körperschaftsteuergesetzes bezeichneten Körperschaften, Personenvereinigungen oder Vermögensmassen</h1>
+<table><tr><td class="l">Name und Anschrift des Zuwendenden:</td><td><b>${esc(name)}</b><br>${esc(anschrift)}</td></tr>
+<tr><td class="l">Art der Zuwendung:</td><td>${esc(art)}</td></tr>
+<tr><td class="l">Betrag der Zuwendung in Ziffern:</td><td><b>${esc(eur)}</b></td></tr>
+<tr><td class="l">in Buchstaben:</td><td>${esc(betragInWorten(betrag))}</td></tr>
+<tr><td class="l">Tag der Zuwendung bzw. Zeitraum:</td><td>${esc(o.zeitraum)}</td></tr></table>
+<p>Es handelt sich um den Verzicht auf Erstattung von Aufwendungen: Ja ☐ &nbsp; Nein ☒</p>
+<p>Wir sind wegen Förderung ${esc(B.zweck || "")} nach dem ${esc(B.art || "Freistellungsbescheid")} des Finanzamtes ${esc(B.finanzamt || "")}, StNr. ${esc(B.steuernr || "")}, vom ${esc(dat(B.datum))} für den letzten Veranlagungszeitraum ${esc(B.zeitraum || "")} nach § 5 Abs. 1 Nr. 9 des Körperschaftsteuergesetzes von der Körperschaftsteuer und nach § 3 Nr. 6 des Gewerbesteuergesetzes von der Gewerbesteuer befreit.</p>
+<p>Es wird bestätigt, dass die Zuwendung nur zur Förderung ${esc(B.zweck || "")} verwendet wird.</p>
+<div class="sig">${esc(V.ort)}, den ${esc(new Date().toLocaleDateString("de-DE"))}<br>(Ort, Datum und Unterschrift des Zuwendungsempfängers)</div>
+<p class="s" style="margin-top:24pt">Hinweis: Wer vorsätzlich oder grob fahrlässig eine unrichtige Zuwendungsbestätigung erstellt oder veranlasst, dass Zuwendungen nicht zu den in der Zuwendungsbestätigung angegebenen steuerbegünstigten Zwecken verwendet werden, haftet für die entgangene Steuer (§ 10b Abs. 4 EStG, § 9 Abs. 3 KStG, § 9 Nr. 5 GewStG).</p>
+</body></html>`;
+    const w = window.open("", "_blank");
+    if (!w) { toast("Bitte Pop-ups für diese Seite erlauben."); return; }
+    w.document.open(); w.document.write(html); w.document.close(); setTimeout(() => { try { w.focus(); w.print(); } catch (e) {} }, 400);
+  }
+  function bescheinigungHtml(m) {
+    const B = (IN().verein || {}).bescheid || {}, V = IN().verein;
+    const bereit = V.gemeinnuetzig && B.finanzamt && B.steuernr && B.datum && B.zweck && B.zeitraum;
+    const jahr = new Date().getFullYear() - 1;
+    return `<fieldset style="margin-top:12px"><legend>Zuwendungsbestätigung</legend>
+      ${bereit ? `<div class="cols"><div class="field"><label for="zb_art">Art</label><select id="zb_art"><option value="beitrag">Mitgliedsbeitrag</option><option value="spende">Geldzuwendung</option></select></div>
+        <div class="field"><label for="zb_betrag">Betrag in €</label><input id="zb_betrag" inputmode="decimal" value="${m.beitrag != null ? String(m.beitrag).replace(".", ",") : ""}"></div></div>
+        <div class="field"><label for="zb_zeit">Tag oder Zeitraum</label><input id="zb_zeit" value="${jahr}"></div>
+        <button type="button" class="btn sec small" id="zbDruck">${ICON.druck || ""}Bestätigung drucken</button>
+        <p class="hint small mute">Öffnet ein Druckfenster. Bitte erst prüfen, ob der Text zu eurem Freistellungsbescheid passt.</p>`
+      : `<p class="mute small">Zum Drucken zuerst unter „Vereinsdaten“ → „Rechtliches“ die Angaben aus dem Freistellungsbescheid eintragen und „gemeinnützig“ ankreuzen.</p>`}</fieldset>`;
+  }
 
   /* ---------- Zugang beantragen (#registrieren) ---------- */
   A.SEITEN.registrieren = (v) => {
