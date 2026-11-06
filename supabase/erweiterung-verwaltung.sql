@@ -141,3 +141,12 @@ grant execute on function public.vorstand_liste() to authenticated;
 grant execute on function public.zugang_anfragen() to authenticated;
 grant execute on function public.zugang_freischalten(uuid, text, text) to authenticated;
 grant execute on function public.zugang_ablehnen(uuid) to authenticated;
+
+-- Supabase gibt neuen Funktionen standardmäßig Ausführrechte für "anon": für Vorstandsfunktionen entziehen
+revoke execute on function public.vorstand_hinzufuegen(text, text) from anon;
+revoke execute on function public.vorstand_entfernen(uuid) from anon;
+revoke execute on function public.vorstand_liste() from anon;
+revoke execute on function public.zugang_anfragen() from anon;
+revoke execute on function public.zugang_freischalten(uuid, text, text) from anon;
+revoke execute on function public.zugang_ablehnen(uuid) from anon;
+revoke execute on function public.liste_speichern(jsonb) from anon;
