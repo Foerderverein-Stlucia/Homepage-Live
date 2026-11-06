@@ -678,7 +678,7 @@
     const kommendeListen = (listen || []).filter(l => !l.datum || A.dt(l.datum) >= h);
     const freiePlaetze = kommendeListen.reduce((s, l) => s + A.frei(l), 0);
     const termin = (IN().termine || []).filter(t => A.dt(t.datum) >= h).sort((a, b) => String(a.datum).localeCompare(String(b.datum)))[0];
-    const aufgaben = (aufg || AUFGABEN_START).filter(a => a.erledigt !== jahr && +a.monat <= monat);
+    const aufgaben = aufgabenMitNeuem(aufg).filter(a => a.erledigt !== jahr && +a.monat <= monat);
     const kachel = (zahl, text, ziel, farbe, extra) => `<button class="card" data-goto="${ziel}" style="--dot:var(--${farbe});text-align:left;cursor:pointer;border:0;font:inherit;color:inherit"><div style="font:800 2rem var(--head,inherit)" class="tnum">${zahl}</div><div><b>${text}</b>${extra ? `<div class="mute small">${extra}</div>` : ""}</div></button>`;
     const ls = letzteSicherung();
     box.innerHTML = `<h1 style="font-size:1.6rem;margin-bottom:12px">Was ist los?</h1>
@@ -776,11 +776,18 @@
     { id: "a6", titel: "Mitgliedsbeiträge per SEPA einziehen", monat: 10 },
     { id: "a7", titel: "Termine und Projekte auf der Homepage aktualisieren", monat: 11 },
     { id: "a8", titel: "Datensicherung herunterladen und aufbewahren", monat: 12 }
-  ].map(a => ({ ...a, erledigt: null }));
+  ].concat([
+    { id: "ds1", titel: "Datenschutz: neue Vorstandsmitglieder schriftlich auf das Datengeheimnis verpflichten", monat: 3 },
+    { id: "ds2", titel: "Datenschutz: Bericht des Datenschutzbeauftragten an den Vorstand einholen", monat: 4 },
+    { id: "ds3", titel: "Datenschutz: Verzeichnis der Verarbeitungstätigkeiten prüfen und aktualisieren", monat: 4 },
+    { id: "ds4", titel: "Datenschutz: Löschfristen prüfen (Ausgetretene, SEPA-Mandate, alte Listen) und Daten löschen", monat: 1 }
+  ]).map(a => ({ ...a, erledigt: null }));
+  const DS_IDS = ["ds1", "ds2", "ds3", "ds4"];
+  const aufgabenMitNeuem = (arr) => Array.isArray(arr) ? (arr.some(a => DS_IDS.includes(a.id)) ? arr : arr.concat(AUFGABEN_START.filter(a => DS_IDS.includes(a.id)).map(a => ({ ...a })))) : AUFGABEN_START.map(a => ({ ...a }));
   const MONATE = ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Dezember"];
   TAB.aufgaben = async (box) => {
     const jahr = new Date().getFullYear();
-    let arr = await D.inhaltLesen("aufgaben"); if (!Array.isArray(arr)) arr = AUFGABEN_START.map(a => ({ ...a }));
+    let arr = aufgabenMitNeuem(await D.inhaltLesen("aufgaben"));
     arr = arr.slice().sort((a, b) => +a.monat - +b.monat);
     const speichern = async (neuArr) => { await D.inhaltSpeichern("aufgaben", neuArr); TAB.aufgaben(box); };
     box.innerHTML = `<div class="row" style="justify-content:space-between;margin-bottom:8px"><h1 style="font-size:1.6rem">Checkliste ${jahr}</h1><button class="btn small" id="aNeu">${ICON.plus}Aufgabe</button></div>
