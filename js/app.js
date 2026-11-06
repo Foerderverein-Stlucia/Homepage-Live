@@ -423,7 +423,8 @@
         <li>Zuschüsse zu Ausflügen und Projekten, damit alle Kinder mitmachen können</li>
         <li>Organisation von St.-Martins-Zug, Adventsbasar und Sommerfest gemeinsam mit dem Kita-Team</li></ul></div></section>
       <section><h2>Vorstand</h2><div class="grid2" style="margin-top:10px">${V.vorstand.map(m => `<div class="card"><p class="mute small">${esc(m.rolle)}</p><p style="font-weight:700">${esc(m.name)}</p></div>`).join("")}</div></section>
-      <section><h2>Gemeinsam mit der Kita</h2><p class="prose" style="margin-top:10px">Über jedes Projekt sprechen wir vorher mit der Kita-Leitung. So kommt das Geld dort an, wo es im Alltag wirklich gebraucht wird.</p></section>
+      <section><h2>Gemeinsam mit der Kita</h2><div class="prose" style="margin-top:10px">${V.kitaInfo ? `<p>${esc(V.kitaInfo.text)}</p>` : ""}<p>Über jedes Projekt sprechen wir vorher mit der Kita-Leitung. So kommt das Geld dort an, wo es im Alltag wirklich gebraucht wird.</p>
+        ${V.kitaInfo ? `<div class="card stack" style="--gap:6px"><p class="mute small">Kath. Kita St. Lucia</p><p>${esc(V.kitaInfo.adresse)}</p><p><a href="${esc(V.kitaInfo.link)}" target="_blank" rel="noopener">Zur Seite der Pfarrei St. Maria Magdalena</a></p></div>` : ""}</div></section>
       <section><div class="card row" style="justify-content:space-between"><div style="flex:1 1 240px;min-width:0"><h3>Mitglied werden</h3><p class="mute small">Ab ${euro(V.mindestbeitrag)} im Jahr, jederzeit kündbar zum Jahresende.</p></div><a class="btn" href="#mitglied">Zum Antrag</a></div></section>`;
   };
 

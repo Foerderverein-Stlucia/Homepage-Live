@@ -23,7 +23,12 @@ window.FV_INHALT = {
     mindestbeitrag: 12,
     glaeubigerId: "DE00ZZZ00000000000",  // BEISPIEL – Gläubiger-ID der Bundesbank
     bank: { inhaber: "Förderverein Kita St. Lucia Walbeck e.V.", iban: "DE00 0000 0000 0000 0000 00", bic: "XXXXDEXXXXX", institut: "Bank folgt" },
-    kontakt: { email: "kontakt@beispiel.de", adresse: "Kita St. Lucia · Straße folgt · 47608 Geldern-Walbeck" },
+    kontakt: { email: "kontakt@beispiel.de", adresse: "c/o Kath. Kita St. Lucia · Meusweg 12 · 47608 Geldern-Walbeck" },
+    kitaInfo: {
+      adresse: "Meusweg 12, 47608 Geldern-Walbeck",
+      text: "Die Kita St. Lucia gehört zur Pfarrei St. Maria Magdalena Geldern. In zwei Gruppen für Kinder von 3 bis 6 Jahren und einer Gruppe für Kinder von 2 bis 4 Jahren gibt es bis zu 70 Plätze.",
+      link: "https://www.st-mariamagdalena-geldern.de"
+    },
     registergericht: "Registergericht und Nummer folgen",
     gemeinnuetzig: true
   },
