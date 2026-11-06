@@ -66,10 +66,16 @@
   const csvZelle = (v) => '"' + String(v ?? "").replace(/"/g, '""') + '"';
 
   /* ================= Seite ================= */
+  const tabLeiste = { pos: null };
   A.SEITEN.verwaltung = async (v) => {
     if (!D.angemeldet()) return anmeldung(v);
     v.innerHTML = `<div class="row" style="justify-content:space-between;margin-bottom:12px"><span class="eyebrow" style="--dot:var(--teal)">Verwaltung</span><button class="btn ghost small" id="abmelden">Abmelden</button></div>
       <div class="tabs scroll" role="tablist">${TABS.map(([k, t]) => `<button role="tab" aria-selected="${k === tab}" data-t="${k}">${t}</button>`).join("")}</div><div id="vInhalt"><p class="mute">Lädt …</p></div>`;
+    const leiste = $(".tabs", v), aktiv = $('[aria-selected="true"]', leiste);
+    const mitte = () => aktiv.offsetLeft - (leiste.clientWidth - aktiv.offsetWidth) / 2;
+    leiste.scrollLeft = tabLeiste.pos != null ? tabLeiste.pos : mitte();
+    requestAnimationFrame(() => { try { leiste.scrollTo({ left: Math.max(0, mitte()), behavior: "smooth" }); } catch (e) { leiste.scrollLeft = mitte(); } });
+    leiste.addEventListener("scroll", () => { tabLeiste.pos = leiste.scrollLeft; }, { passive: true });
     $("#abmelden").onclick = async () => { await D.abmelden(); A.render(); };
     $$("[data-t]", v).forEach(b => b.onclick = () => { tab = b.dataset.t; A.render(); });
     const box = $("#vInhalt");
