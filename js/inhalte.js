@@ -34,7 +34,7 @@ window.FV_INHALT = {
       text: "Die Kita St. Lucia gehört zur Pfarrei St. Maria Magdalena Geldern. In zwei Gruppen für Kinder von 3 bis 6 Jahren und einer Gruppe für Kinder von 2 bis 4 Jahren gibt es bis zu 70 Plätze.",
       link: "https://www.st-mariamagdalena-geldern.de"
     },
-    registergericht: "Registergericht und Nummer folgen",
+    registergericht: "Amtsgericht Kleve, VR 31096",
     datenschutz: { name: "Carsten Göthner", email: "dsb@mentor-gmbh.de" },
     gemeinnuetzig: null              // true, sobald die Gemeinnützigkeit bestätigt ist
   },
