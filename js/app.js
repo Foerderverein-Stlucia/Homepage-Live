@@ -437,9 +437,16 @@
       <section><h2>Vorstand</h2><div class="grid2" style="margin-top:10px">${V.vorstand.map(m => `<div class="card"><p class="mute small">${esc(m.rolle)}</p><p style="font-weight:700">${esc(m.name)}</p></div>`).join("")}</div></section>
       <section><h2>Gemeinsam mit der Kita</h2><div class="prose" style="margin-top:10px">${V.kitaInfo ? `<p>${esc(V.kitaInfo.text)}</p>` : ""}<p>Über jedes Projekt sprechen wir vorher mit der Kita-Leitung. So kommt das Geld dort an, wo es im Alltag wirklich gebraucht wird.</p>
         ${V.kitaInfo ? `<div class="card stack" style="--gap:6px"><p class="mute small">Kath. Kita St. Lucia</p><p>${esc(V.kitaInfo.adresse)}</p><p><a href="${esc(V.kitaInfo.link)}" target="_blank" rel="noopener">Zur Seite der Pfarrei St. Maria Magdalena</a></p></div>` : ""}</div></section>
+      <section id="unterstuetzer" hidden><h2>Firmen, die uns unterstützen</h2><p class="mute" style="margin-top:4px">Danke an unsere Firmenmitglieder!</p><div class="chips" id="unterstuetzerListe" style="margin-top:10px"></div></section>
+      <section><div class="card row" style="justify-content:space-between"><div style="flex:1 1 240px;min-width:0"><h3>Firmen als Mitglied</h3><p class="mute small">Auch Unternehmen aus Walbeck und Umgebung können Mitglied werden${V.beitraegeFirma && V.beitraegeFirma.length ? ", ab " + euro(+V.mindestbeitragFirma || Math.min(...V.beitraegeFirma)) + " " + esc(V.beitragZeitraum || "im Jahr") : ""}.</p></div><a class="btn sec" href="#mitglied-firma">Firmenantrag</a></div></section>
       <section><div class="card row" style="justify-content:space-between"><div style="flex:1 1 240px;min-width:0"><h3>Mitglied werden</h3><p class="mute small">Ab ${euro(V.mindestbeitrag)} ${esc(V.beitragZeitraum || "im Jahr")}.</p></div><a class="btn" href="#mitglied">Zum Antrag</a></div></section>`;
+    unterstuetzerLaden();
   };
 
+  async function unterstuetzerLaden() {
+    try { const u = await D.unterstuetzer(); const sec = $("#unterstuetzer"); if (!sec || !u.length) return;
+      $("#unterstuetzerListe").innerHTML = u.map(x => `<span class="chip" style="font-size:.95rem;padding:6px 14px">${esc(x)}</span>`).join(""); sec.hidden = false; } catch (e) {}
+  }
   SEITEN.spenden = (v) => {
     const b = V.bank;
     v.innerHTML = kopf("yellow", "Spenden", "Jeder Betrag hilft", "Ob 5 Euro oder eine größere Summe: Eure Spende fließt vollständig in Projekte für die Kinder.") +
@@ -484,11 +491,21 @@
   };
 
   /* ---------- Mitgliedsantrag ---------- */
-  SEITEN.mitglied = (v) => {
-    const opts = V.beitraege.map((b, i) => `<label><input type="radio" name="beitrag" value="${b}" ${i === 1 ? "checked" : ""}><span class="tnum">${euro(b)}</span></label>`).join("");
-    v.innerHTML = kopf("blue", "Mitglied werden", "Mitgliedsantrag", "Füllt den Antrag in zwei Minuten aus. Der Beitrag wird " + esc(V.beitragZeitraum || "pro Jahr") + " per Lastschrift eingezogen.") +
-      `<form id="antrag" class="card" novalidate>
-        <fieldset><legend>Zu eurer Person</legend>
+  SEITEN.mitglied = (v, arg) => {
+    let art = arg === "firma" ? "firma" : "person";
+    const zeit = esc(V.beitragZeitraum || "pro Jahr");
+    const stufen = () => art === "firma" ? (V.beitraegeFirma && V.beitraegeFirma.length ? V.beitraegeFirma : [50, 100, 250]) : V.beitraege;
+    const minimum = () => art === "firma" ? (+V.mindestbeitragFirma || Math.min(...stufen())) : V.mindestbeitrag;
+    const beitragHtml = () => stufen().map((b, i) => `<label><input type="radio" name="beitrag" value="${b}" ${i === Math.min(1, stufen().length - 1) ? "checked" : ""}><span class="tnum">${euro(b)}</span></label>`).join("") +
+      `<label><input type="radio" name="beitrag" value="eigen"><span>Eigener Betrag</span></label>`;
+    v.innerHTML = kopf("blue", "Mitglied werden", "Mitgliedsantrag", "Füllt den Antrag in zwei Minuten aus. Der Beitrag wird " + zeit + " per Lastschrift eingezogen.") +
+      `<div class="choice" role="radiogroup" aria-label="Art der Mitgliedschaft" style="margin-bottom:14px">
+        <label><input type="radio" name="art" value="person" ${art === "person" ? "checked" : ""}><span>Als Privatperson</span></label>
+        <label><input type="radio" name="art" value="firma" ${art === "firma" ? "checked" : ""}><span>Als Firma</span></label></div>
+      <form id="antrag" class="card" novalidate>
+        <fieldset><legend id="lgPerson">Zu eurer Person</legend>
+          <div class="field" id="firmaFeld" hidden><label for="a_firma">Name der Firma</label><input id="a_firma" type="text" autocomplete="organization" maxlength="120"></div>
+          <p class="mute small" id="ansprechHinweis" hidden>Ansprechpartner/in</p>
           <div class="cols"><div class="field"><label for="a_vorname">Vorname</label><input id="a_vorname" type="text" autocomplete="given-name" required maxlength="60"></div>
             <div class="field"><label for="a_nachname">Nachname</label><input id="a_nachname" type="text" autocomplete="family-name" required maxlength="60"></div></div>
           <div class="field"><label for="a_strasse">Straße und Hausnummer</label><input id="a_strasse" type="text" autocomplete="street-address" required maxlength="120"></div>
@@ -496,16 +513,17 @@
             <div class="field"><label for="a_ort">Ort</label><input id="a_ort" type="text" autocomplete="address-level2" required maxlength="80" placeholder="Geldern-Walbeck"></div></div>
           <div class="cols"><div class="field"><label for="a_email">E-Mail</label><input id="a_email" type="email" autocomplete="email" required maxlength="120"></div>
             <div class="field"><label for="a_tel">Telefon <span class="mute">(freiwillig)</span></label><input id="a_tel" type="tel" autocomplete="tel" maxlength="40"></div></div>
-          <div class="field"><label for="a_kind">Kind in der Kita, Gruppe <span class="mute">(freiwillig)</span></label><input id="a_kind" type="text" maxlength="120" placeholder="z. B. Mia, Gruppe Sonnenblume"></div>
+          <div class="field" id="kindFeld"><label for="a_kind">Kind in der Kita, Gruppe <span class="mute">(freiwillig)</span></label><input id="a_kind" type="text" maxlength="120" placeholder="z. B. Mia, Gruppe Sonnenblume"></div>
+          <label class="check" id="nennungFeld" hidden><input type="checkbox" id="a_nennung"><span>Unsere Firma darf auf der Seite des Fördervereins als Unterstützer genannt werden (nur der Firmenname).</span></label>
         </fieldset>
-        <fieldset><legend>Beitrag <span class="mute" style="font-size:.9rem">${esc(V.beitragZeitraum || "pro Jahr")}</span></legend>
-          <div class="choice" role="radiogroup" aria-label="Jahresbeitrag">${opts}<label><input type="radio" name="beitrag" value="eigen"><span>Eigener Betrag</span></label></div>
-          <div class="field" id="eigenFeld" hidden><label for="a_eigen">Betrag in Euro ${esc(V.beitragZeitraum || "pro Jahr")} (mindestens ${euro(V.mindestbeitrag)})</label><input id="a_eigen" type="number" inputmode="decimal" min="${V.mindestbeitrag}" step="1"></div>
+        <fieldset><legend>Beitrag <span class="mute" style="font-size:.9rem">${zeit}</span></legend>
+          <div class="choice" role="radiogroup" aria-label="Beitrag" id="beitragWahl">${beitragHtml()}</div>
+          <div class="field" id="eigenFeld" hidden><label for="a_eigen" id="eigenLabel"></label><input id="a_eigen" type="number" inputmode="decimal" step="1"></div>
         </fieldset>
         <fieldset><legend>SEPA-Lastschriftmandat</legend>
           <div class="field"><label for="a_inhaber">Kontoinhaber/in</label><input id="a_inhaber" type="text" autocomplete="cc-name" required maxlength="120"></div>
           <div class="field"><label for="a_iban">IBAN</label><input id="a_iban" type="text" autocomplete="off" required maxlength="42" placeholder="DE.. .... .... .... .... .." spellcheck="false" style="font-variant-numeric:tabular-nums;letter-spacing:.03em"></div>
-          <p class="mandate">Ich ermächtige den ${esc(V.name)}${V.glaeubigerId ? " (Gläubiger-ID " + esc(V.glaeubigerId) + ")" : ""} widerruflich, den Mitgliedsbeitrag ${esc(V.beitragZeitraum || "pro Jahr")} von meinem Konto mittels Lastschrift einzuziehen. Zugleich weise ich mein Kreditinstitut an, die Lastschriften einzulösen. Ich kann innerhalb von acht Wochen, beginnend mit dem Belastungsdatum, die Erstattung des belasteten Betrages verlangen. Es gelten die mit meinem Kreditinstitut vereinbarten Bedingungen. Die Mandatsreferenz wird mir separat mitgeteilt.</p>
+          <p class="mandate">Ich ermächtige den ${esc(V.name)}${V.glaeubigerId ? " (Gläubiger-ID " + esc(V.glaeubigerId) + ")" : ""} widerruflich, den Mitgliedsbeitrag ${zeit} von meinem Konto mittels Lastschrift einzuziehen. Zugleich weise ich mein Kreditinstitut an, die Lastschriften einzulösen. Ich kann innerhalb von acht Wochen, beginnend mit dem Belastungsdatum, die Erstattung des belasteten Betrages verlangen. Es gelten die mit meinem Kreditinstitut vereinbarten Bedingungen. Die Mandatsreferenz wird mir separat mitgeteilt.</p>
           <label class="check"><input type="checkbox" id="a_sepa" required><span>Ich erteile das SEPA-Lastschriftmandat.</span></label>
           <label class="check"><input type="checkbox" id="a_nl"><span>Ja, ich möchte den E-Mail-Newsletter mit Informationen zu Veranstaltungen und Aktionen des Vereins erhalten. Abmelden geht jederzeit per E-Mail an ${esc(V.kontakt.email)}.</span></label>
           <label class="check"><input type="checkbox" id="a_ds" required><span>Ich habe die <a href="#datenschutz">Datenschutzhinweise</a> gelesen und bin mit der Speicherung meiner Daten für die Mitgliederverwaltung einverstanden.</span></label>
@@ -518,11 +536,22 @@
       <section class="noprint"><div class="card row" style="justify-content:space-between"><div style="flex:1 1 240px;min-width:0"><h3>Lieber auf Papier?</h3><p class="mute small">${esc(V.papierAntrag || "")} Für die Pinnwand gibt es außerdem einen Aushang mit QR-Code zum Online-Antrag.</p></div><a class="btn sec small" href="#aushang-mitglied">${ICON.qr}Aushang</a></div></section>`;
     const f = $("#antrag");
     const eigen = $("#eigenFeld");
-    $$('input[name="beitrag"]', f).forEach(r => r.onchange = () => { eigen.hidden = r.value !== "eigen" || !r.checked; if (!eigen.hidden) $("#a_eigen").focus(); });
+    const beitragBinden = () => $$('input[name="beitrag"]', f).forEach(r => r.onchange = () => { eigen.hidden = r.value !== "eigen" || !r.checked; if (!eigen.hidden) $("#a_eigen").focus(); });
+    const artSetzen = () => {
+      const firma = art === "firma";
+      $("#firmaFeld").hidden = !firma; $("#ansprechHinweis").hidden = !firma; $("#nennungFeld").hidden = !firma; $("#kindFeld").hidden = firma;
+      $("#lgPerson").textContent = firma ? "Zur Firma" : "Zu eurer Person";
+      $("#beitragWahl").innerHTML = beitragHtml(); eigen.hidden = true; beitragBinden();
+      $("#eigenLabel").textContent = "Betrag in Euro " + (V.beitragZeitraum || "pro Jahr") + " (mindestens " + euro(minimum()) + ")";
+      $("#a_eigen").min = minimum();
+      inhaberVorschlag(true);
+    };
+    $$('input[name="art"]').forEach(r => r.onchange = () => { art = r.value; artSetzen(); });
     $("#a_iban").addEventListener("input", e => { const el = e.target, pos = el.selectionStart === el.value.length; el.value = el.value.toUpperCase().replace(/[^A-Z0-9]/g, "").replace(/(.{4})/g, "$1 ").trim(); if (pos) el.selectionStart = el.selectionEnd = el.value.length; });
-    const inhaberVorschlag = () => { const i = $("#a_inhaber"); if (!i.value || i.dataset.auto) { i.value = ($("#a_vorname").value + " " + $("#a_nachname").value).trim(); i.dataset.auto = 1; } };
-    $("#a_vorname").addEventListener("input", inhaberVorschlag); $("#a_nachname").addEventListener("input", inhaberVorschlag);
+    function inhaberVorschlag() { const i = $("#a_inhaber"); if (!i.value || i.dataset.auto) { i.value = art === "firma" && $("#a_firma").value.trim() ? $("#a_firma").value.trim() : ($("#a_vorname").value + " " + $("#a_nachname").value).trim(); i.dataset.auto = 1; } }
+    ["#a_vorname", "#a_nachname", "#a_firma"].forEach(id => $(id).addEventListener("input", () => inhaberVorschlag()));
     $("#a_inhaber").addEventListener("input", e => { delete e.target.dataset.auto; });
+    artSetzen();
     f.onsubmit = async (e) => {
       e.preventDefault();
       $$(".field.bad", f).forEach(x => x.classList.remove("bad")); $$(".field .err", f).forEach(x => x.remove());
@@ -531,6 +560,7 @@
       const fehler = [];
       const pruef = (id, ok, text) => { if (!ok) { const fl = $("#" + id).closest(".field"); if (fl) { fl.classList.add("bad"); fl.insertAdjacentHTML("beforeend", `<span class="err">${text}</span>`); } fehler.push(id); } };
       const val = (id) => $("#" + id).value.trim();
+      if (art === "firma") pruef("a_firma", val("a_firma").length >= 2, "Bitte den Namen der Firma eintragen.");
       pruef("a_vorname", val("a_vorname"), "Bitte Vornamen eintragen.");
       pruef("a_nachname", val("a_nachname"), "Bitte Nachnamen eintragen.");
       pruef("a_strasse", val("a_strasse"), "Bitte Straße und Hausnummer eintragen.");
@@ -541,16 +571,17 @@
       pruef("a_iban", ibanOk(val("a_iban")), "Diese IBAN stimmt nicht. Bitte noch einmal vergleichen.");
       const wahl = $('input[name="beitrag"]:checked', f).value;
       const beitrag = wahl === "eigen" ? parseFloat(String($("#a_eigen").value).replace(",", ".")) : +wahl;
-      if (wahl === "eigen") pruef("a_eigen", beitrag >= V.mindestbeitrag, "Mindestens " + euro(V.mindestbeitrag) + ".");
+      if (wahl === "eigen") pruef("a_eigen", beitrag >= minimum(), "Mindestens " + euro(minimum()) + ".");
       if (!$("#a_sepa").checked) fehler.push("a_sepa");
       if (!$("#a_ds").checked) fehler.push("a_ds");
       if (fehler.length) {
-        err.textContent = fehler.some(x => x === "a_sepa" || x === "a_ds") && fehler.length <= 2 && fehler.every(x => x === "a_sepa" || x === "a_ds")
+        err.textContent = fehler.every(x => x === "a_sepa" || x === "a_ds")
           ? "Bitte die beiden Häkchen beim Lastschriftmandat und beim Datenschutz setzen." : "Bitte die markierten Felder prüfen.";
         err.hidden = false; const first = $("#" + fehler[0]); if (first) first.focus(); return;
       }
-      const daten = { vorname: val("a_vorname"), nachname: val("a_nachname"), strasse: val("a_strasse"), plz: val("a_plz"), ort: val("a_ort"),
-        email: val("a_email"), telefon: val("a_tel"), kind: val("a_kind"), beitrag, kontoinhaber: val("a_inhaber"),
+      const daten = { art, firma: art === "firma" ? val("a_firma") : "", nennung: art === "firma" && $("#a_nennung").checked,
+        vorname: val("a_vorname"), nachname: val("a_nachname"), strasse: val("a_strasse"), plz: val("a_plz"), ort: val("a_ort"),
+        email: val("a_email"), telefon: val("a_tel"), kind: art === "firma" ? "" : val("a_kind"), beitrag, kontoinhaber: val("a_inhaber"),
         iban: val("a_iban").replace(/\s/g, ""), sepa_mandat: true, datenschutz: true, newsletter: $("#a_nl").checked };
       const btn = f.querySelector("[type=submit]"); btn.disabled = true; btn.textContent = "Wird gesendet …";
       try { await D.antrag(daten); bestaetigung(v, daten); window.scrollTo(0, 0); }
@@ -561,10 +592,11 @@
   function bestaetigung(v, a) {
     const iban = a.iban.replace(/(.{4})/g, "$1 ").trim();
     const maskiert = iban.slice(0, 4) + " •••• •••• •••• " + iban.slice(-7);
-    v.innerHTML = kopf("green", "Geschafft", "Danke, " + esc(a.vorname) + "!", "Euer Antrag ist beim Vorstand angekommen. Ihr bekommt eine Bestätigung per E-Mail an " + esc(a.email) + ".") +
+    const firma = a.art === "firma";
+    v.innerHTML = kopf("green", "Geschafft", "Danke" + (firma ? "" : ", " + esc(a.vorname)) + "!", (firma ? "Der Antrag für " + esc(a.firma) + " ist beim Vorstand angekommen." : "Euer Antrag ist beim Vorstand angekommen.") + " Ihr bekommt eine Bestätigung per E-Mail an " + esc(a.email) + ".") +
       `<div class="card stack" style="--gap:8px"><h3>Eure Angaben</h3>
-        <p>${esc(a.vorname)} ${esc(a.nachname)}<br>${esc(a.strasse)}<br>${esc(a.plz)} ${esc(a.ort)}</p>
-        <p>Beitrag: <b class="tnum">${euro(a.beitrag)}</b> ${esc(V.beitragZeitraum || "pro Jahr")}</p>${a.newsletter ? `<p>Newsletter: ja</p>` : ""}
+        <p>${firma ? `<b>${esc(a.firma)}</b><br>z. Hd. ` : ""}${esc(a.vorname)} ${esc(a.nachname)}<br>${esc(a.strasse)}<br>${esc(a.plz)} ${esc(a.ort)}</p>
+        <p>Beitrag: <b class="tnum">${euro(a.beitrag)}</b> ${esc(V.beitragZeitraum || "pro Jahr")}</p>${a.newsletter ? `<p>Newsletter: ja</p>` : ""}${firma ? `<p>Nennung als Unterstützer: ${a.nennung ? "ja" : "nein"}</p>` : ""}
         <p>Lastschrift von: ${esc(a.kontoinhaber)}, <span class="tnum">${maskiert}</span></p>
         <p class="mute small">${V.glaeubigerId ? "Gläubiger-ID " + esc(V.glaeubigerId) + " · " : ""}eingegangen am ${new Date().toLocaleDateString("de-DE")}</p></div>
       <div class="row noprint" style="margin-top:16px">${PREVIEW ? "" : `<button class="btn sec" onclick="window.print()">${ICON.druck}Kopie drucken</button>`}<a class="btn" href="#start">Zur Startseite</a></div>`;

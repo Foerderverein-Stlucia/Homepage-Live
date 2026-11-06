@@ -123,6 +123,7 @@
     async vorstandHinzufuegen(email, name) { const a = store.get("demoVorstand", []) || []; a.push({ user_id: uid(), name, email, ich: false }); store.set("demoVorstand", a); },
     async vorstandEntfernen(id) { store.set("demoVorstand", (store.get("demoVorstand", []) || []).filter(x => x.user_id !== id)); },
     async passwortAendern() { throw new Error("Im Vorschau-Modus gibt es kein echtes Passwort."); },
+    async unterstuetzer() { return (store.get("mitglieder", []) || []).filter(m => m.art === "firma" && m.nennung && m.status !== "ausgetreten" && m.firma).map(m => m.firma).sort((a, b) => a.localeCompare(b, "de")); },
     zuruecksetzen() { try { ["fv_demo", "fv_meine", "fv_inhalte", "fv_mitglieder", "fv_demoVorstand", "fv_demoAnfragen"].forEach(k => localStorage.removeItem(k)); } catch (e) {} }
   };
 
@@ -151,6 +152,8 @@
     if (/VOLL/.test(m)) return "Dieser Platz ist inzwischen voll.";
     if (/GESCHLOSSEN/.test(m)) return "Diese Liste ist nicht mehr offen.";
     if (/Invalid login/i.test(m)) return "E-Mail oder Passwort stimmt nicht.";
+    if (/not confirmed/i.test(m)) return "Die E-Mail-Adresse ist noch nicht bestätigt. In Supabase „Confirm email“ ausschalten oder den Vorstand um Hilfe bitten.";
+    if (/rate limit|too many/i.test(m)) return "Zu viele Versuche in kurzer Zeit. Bitte in ein paar Minuten noch einmal.";
     if (/KEIN_KONTO/.test(m)) return "Zu dieser E-Mail gibt es noch kein Konto. Bitte zuerst in Supabase anlegen (siehe Hinweis).";
     if (/SELBST/.test(m)) return "Den eigenen Zugang kann man nicht entfernen.";
     if (/IST_VORSTAND/.test(m)) return "Dieser Zugang ist schon freigeschaltet. Erst entfernen, dann ablehnen.";
@@ -254,11 +257,13 @@
         if (/already|registered|exists/i.test(m)) throw new Error("Mit dieser E-Mail gibt es schon einen Zugang oder eine Anfrage.");
         if (/not allowed|disabled/i.test(m)) throw new Error("Neue Zugänge sind gerade abgeschaltet. Bitte beim Vorstand melden.");
         if (/password/i.test(m)) throw new Error("Das Passwort ist zu kurz oder zu einfach.");
-        if (/rate|too many/i.test(m)) throw new Error("Zu viele Versuche. Bitte in einer Stunde noch einmal.");
+        if (/email rate limit/i.test(m)) throw new Error("Die Anfrage ist wahrscheinlich angekommen, aber Supabase konnte keine Bestätigungsmail senden. Bitte beim Vorstand melden (dort muss „Confirm email“ ausgeschaltet werden).");
+        if (/rate|too many/i.test(m)) throw new Error("Zu viele Versuche in kurzer Zeit. Bitte später noch einmal.");
         throw new Error("Die Anfrage hat nicht geklappt." + (m ? " (" + m + ")" : ""));
       }
     },
     async zugangAnfragen() { return await req("/rest/v1/rpc/zugang_anfragen", { method: "POST", body: {}, auth: true }); },
+    async unterstuetzer() { return (await req("/rest/v1/rpc/unterstuetzer", { method: "POST", body: {} })).map(x => x.firma); },
     async zugangFreischalten(id, name, amt) { await req("/rest/v1/rpc/zugang_freischalten", { method: "POST", body: { p_user: id, p_name: name, p_amt: amt }, auth: true }); },
     async zugangAblehnen(id) { await req("/rest/v1/rpc/zugang_ablehnen", { method: "POST", body: { p_user: id }, auth: true }); },
     async vorstandHinzufuegen(email, name) { await req("/rest/v1/rpc/vorstand_hinzufuegen", { method: "POST", body: { p_email: email, p_name: name }, auth: true }); },

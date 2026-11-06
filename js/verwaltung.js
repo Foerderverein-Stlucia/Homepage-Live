@@ -94,7 +94,7 @@
         <button class="btn sec small" id="csvBtn" ${a.length ? "" : "disabled"}>${ICON.install}Als Tabelle (CSV)</button></div>
       <p class="mute" style="margin-bottom:12px">${a.length} Anträge, davon ${neu} neu. Mit „Übernehmen“ landet ein Antrag in der Mitgliederliste und wird auf „angenommen“ gesetzt.</p>
       ${a.length ? `<div class="tablewrap"><table><thead><tr><th>Eingang</th><th>Name</th><th>Ort</th><th>E-Mail</th><th>Beitrag</th><th>Newsletter</th><th>IBAN</th><th>Status</th><th></th></tr></thead><tbody>
-        ${a.map(x => `<tr><td class="tnum">${new Date(x.erstellt).toLocaleDateString("de-DE")}</td><td>${esc(x.vorname)} ${esc(x.nachname)}${x.kind ? `<br><span class="mute small">${esc(x.kind)}</span>` : ""}</td>
+        ${a.map(x => `<tr><td class="tnum">${new Date(x.erstellt).toLocaleDateString("de-DE")}</td><td>${x.art === "firma" ? `<b>${esc(x.firma)}</b> <span class="chip c" style="--dot:var(--purple);--tint:var(--tint-purple)">Firma</span><br><span class="small">${esc(x.vorname)} ${esc(x.nachname)}</span>${x.nennung ? `<br><span class="mute small">möchte genannt werden</span>` : ""}` : `${esc(x.vorname)} ${esc(x.nachname)}`}${x.kind ? `<br><span class="mute small">${esc(x.kind)}</span>` : ""}</td>
           <td>${esc(x.plz)} ${esc(x.ort)}</td><td>${esc(x.email)}</td><td class="tnum">${euro(+x.beitrag)}</td><td>${x.newsletter ? "ja" : "–"}</td><td class="tnum">${esc(String(x.iban).replace(/(.{4})/g, "$1 "))}</td>
           <td><select data-st="${esc(x.id)}" aria-label="Status">${["neu", "angenommen", "abgelehnt"].map(s => `<option ${s === x.status ? "selected" : ""}>${s}</option>`).join("")}</select></td>
           <td>${x.status === "neu" ? `<button class="btn small green" data-ueb="${esc(x.id)}">Übernehmen</button>` : ""}</td></tr>`).join("")}
@@ -103,19 +103,19 @@
     $$("[data-ueb]", box).forEach(b => b.onclick = async () => {
       const x = a.find(y => y.id === b.dataset.ueb); b.disabled = true;
       try {
-        await D.mitgliedSpeichern({ vorname: x.vorname, nachname: x.nachname, strasse: x.strasse, plz: x.plz, ort: x.ort, email: x.email, telefon: x.telefon || "", kind: x.kind || "",
+        await D.mitgliedSpeichern({ art: x.art || "person", firma: x.firma || "", nennung: !!x.nennung, vorname: x.vorname, nachname: x.nachname, strasse: x.strasse, plz: x.plz, ort: x.ort, email: x.email, telefon: x.telefon || "", kind: x.kind || "",
           beitrag: +x.beitrag, newsletter: !!x.newsletter, kontoinhaber: x.kontoinhaber, iban: x.iban, eintritt: heuteISO(), status: "aktiv", antrag_id: D.live ? x.id : null });
-        await D.antragStatus(x.id, "angenommen"); toast(x.vorname + " ist jetzt in der Mitgliederliste"); A.render();
+        await D.antragStatus(x.id, "angenommen"); toast((x.art === "firma" ? x.firma : x.vorname) + " ist jetzt in der Mitgliederliste"); A.render();
       } catch (e) { toast(e.message); b.disabled = false; }
     });
     const cb = $("#csvBtn"); if (cb) cb.onclick = () => {
-      const cols = ["erstellt", "vorname", "nachname", "strasse", "plz", "ort", "email", "telefon", "kind", "beitrag", "newsletter", "kontoinhaber", "iban", "status"];
+      const cols = ["erstellt", "art", "firma", "nennung", "vorname", "nachname", "strasse", "plz", "ort", "email", "telefon", "kind", "beitrag", "newsletter", "kontoinhaber", "iban", "status"];
       herunterladen("mitgliedsantraege_" + heuteISO() + ".csv", "﻿" + [cols.join(";"), ...a.map(x => cols.map(c => csvZelle(x[c])).join(";"))].join("\r\n"), "text/csv;charset=utf-8");
     };
   };
 
   /* ---------- Mitglieder ---------- */
-  const M_FELDER = ["mitgliedsnr", "vorname", "nachname", "strasse", "plz", "ort", "email", "telefon", "kind", "beitrag", "newsletter", "kontoinhaber", "iban", "bic", "bank", "mandatsreferenz", "eintritt", "austritt", "status", "notiz"];
+  const M_FELDER = ["mitgliedsnr", "art", "firma", "nennung", "vorname", "nachname", "strasse", "plz", "ort", "email", "telefon", "kind", "beitrag", "newsletter", "kontoinhaber", "iban", "bic", "bank", "mandatsreferenz", "eintritt", "austritt", "status", "notiz"];
   let mFilter = { q: "", status: "aktiv" };
   TAB.mitglieder = async (box) => {
     const alle = await D.mitglieder();
@@ -123,16 +123,16 @@
     const summe = aktiv.reduce((s, m) => s + (+m.beitrag || 0), 0);
     box.innerHTML = `<div class="row" style="justify-content:space-between;margin-bottom:8px"><h1 style="font-size:1.6rem">Mitglieder</h1>
         <div class="row"><button class="btn small" id="mNeu">${ICON.plus}Neues Mitglied</button><button class="btn sec small" id="mImport">Importieren</button><button class="btn sec small" id="mExport" ${alle.length ? "" : "disabled"}>${ICON.install}Export (CSV)</button></div></div>
-      <div class="facts"><div><dt>Aktive Mitglieder</dt><dd class="tnum">${aktiv.length}</dd></div><div><dt>Beiträge gesamt</dt><dd class="tnum">${euro(summe)}</dd></div><div><dt>Newsletter</dt><dd class="tnum">${aktiv.filter(m => m.newsletter).length}</dd></div></div>
+      <div class="facts"><div><dt>Aktive Mitglieder</dt><dd class="tnum">${aktiv.length}</dd></div><div><dt>davon Firmen</dt><dd class="tnum">${aktiv.filter(m => m.art === "firma").length}</dd></div><div><dt>Beiträge gesamt</dt><dd class="tnum">${euro(summe)}</dd></div><div><dt>Newsletter</dt><dd class="tnum">${aktiv.filter(m => m.newsletter).length}</dd></div></div>
       <div class="row" style="margin-bottom:12px"><input type="text" id="mSuche" placeholder="Suchen nach Name, Ort, E-Mail …" value="${esc(mFilter.q)}" style="flex:1 1 220px">
-        <select id="mStatus" style="flex:0 0 auto;width:auto">${[["aktiv", "Aktive"], ["ausgetreten", "Ausgetretene"], ["alle", "Alle"]].map(([k, t]) => `<option value="${k}" ${k === mFilter.status ? "selected" : ""}>${t}</option>`).join("")}</select></div>
+        <select id="mStatus" style="flex:0 0 auto;width:auto">${[["aktiv", "Aktive"], ["firmen", "Firmen"], ["ausgetreten", "Ausgetretene"], ["alle", "Alle"]].map(([k, t]) => `<option value="${k}" ${k === mFilter.status ? "selected" : ""}>${t}</option>`).join("")}</select></div>
       <div id="mListe"></div>`;
     const zeichnen = () => {
       const q = mFilter.q.toLowerCase();
-      const liste = alle.filter(m => (mFilter.status === "alle" || (mFilter.status === "aktiv" ? m.status !== "ausgetreten" : m.status === "ausgetreten")) &&
-        (!q || [m.vorname, m.nachname, m.ort, m.email, m.kind, m.mitgliedsnr].join(" ").toLowerCase().includes(q)));
+      const passt = (m) => mFilter.status === "alle" ? true : mFilter.status === "firmen" ? m.art === "firma" && m.status !== "ausgetreten" : mFilter.status === "aktiv" ? m.status !== "ausgetreten" : m.status === "ausgetreten";
+      const liste = alle.filter(m => passt(m) && (!q || [m.firma, m.vorname, m.nachname, m.ort, m.email, m.kind, m.mitgliedsnr].join(" ").toLowerCase().includes(q)));
       $("#mListe", box).innerHTML = liste.length ? `<p class="mute small" style="margin-bottom:6px">${liste.length} Einträge</p><div class="tablewrap"><table><thead><tr><th>Nr.</th><th>Name</th><th>Ort</th><th>E-Mail</th><th>Beitrag</th><th>NL</th><th>Eintritt</th><th>Status</th><th></th></tr></thead><tbody>
-        ${liste.map(m => `<tr><td class="tnum">${esc(m.mitgliedsnr || "")}</td><td>${esc(m.nachname)}, ${esc(m.vorname)}${m.kind ? `<br><span class="mute small">${esc(m.kind)}</span>` : ""}</td><td>${esc(m.plz || "")} ${esc(m.ort || "")}</td><td>${esc(m.email || "")}</td>
+        ${liste.map(m => `<tr><td class="tnum">${esc(m.mitgliedsnr || "")}</td><td>${m.art === "firma" ? `<b>${esc(m.firma)}</b> <span class="chip c" style="--dot:var(--purple);--tint:var(--tint-purple)">Firma</span><br><span class="small">${esc(m.vorname)} ${esc(m.nachname)}</span>` : `${esc(m.nachname)}, ${esc(m.vorname)}`}${m.kind ? `<br><span class="mute small">${esc(m.kind)}</span>` : ""}</td><td>${esc(m.plz || "")} ${esc(m.ort || "")}</td><td>${esc(m.email || "")}</td>
           <td class="tnum">${m.beitrag != null && m.beitrag !== "" ? euro(+m.beitrag) : "–"}</td><td>${m.newsletter ? "ja" : "–"}</td><td class="tnum">${datumDE(m.eintritt)}</td><td>${m.status === "ausgetreten" ? "ausgetreten" : "aktiv"}</td>
           <td><button class="btn sec small" data-ed="${esc(m.id)}">Bearbeiten</button></td></tr>`).join("")}</tbody></table></div>`
         : `<div class="card"><p class="mute">${alle.length ? "Keine Treffer." : "Noch keine Mitglieder eingetragen. Legt das erste an oder importiert eine bestehende Liste (Excel oder CSV)."}</p></div>`;
@@ -144,15 +144,18 @@
     $("#mNeu", box).onclick = () => mitgliedForm(null);
     $("#mImport", box).onclick = () => importDialog(alle);
     $("#mExport", box).onclick = () => herunterladen("mitglieder_" + heuteISO() + ".csv",
-      "﻿" + [M_FELDER.join(";"), ...alle.map(m => M_FELDER.map(f => csvZelle(f === "newsletter" ? (m[f] ? "ja" : "nein") : f === "beitrag" && m[f] != null ? String(m[f]).replace(".", ",") : m[f])).join(";"))].join("\r\n"), "text/csv;charset=utf-8");
+      "﻿" + [M_FELDER.join(";"), ...alle.map(m => M_FELDER.map(f => csvZelle(f === "newsletter" || f === "nennung" ? (m[f] ? "ja" : "nein") : f === "beitrag" && m[f] != null ? String(m[f]).replace(".", ",") : m[f])).join(";"))].join("\r\n"), "text/csv;charset=utf-8");
   };
 
   function mitgliedForm(m) {
     const neu = !m; m = m || { status: "aktiv", eintritt: heuteISO(), newsletter: false };
     const V = IN().verein;
-    sheet(`<h2>${neu ? "Neues Mitglied" : esc(m.vorname + " " + m.nachname)}</h2>
+    sheet(`<h2>${neu ? "Neues Mitglied" : esc(m.art === "firma" ? m.firma : m.vorname + " " + m.nachname)}</h2>
       <form id="mf" style="margin-top:12px" novalidate>
-        <div class="cols">${feld("m_vn", "Vorname", m.vorname, { k: "vorname" })}${feld("m_nn", "Nachname", m.nachname, { k: "nachname" })}</div>
+        ${feld("m_art", "Art", m.art || "person", { k: "art", type: "select", opts: [["person", "Privatperson"], ["firma", "Firma"]] })}
+        <div id="m_firmaBox" ${m.art === "firma" ? "" : "hidden"} class="stack" style="--gap:10px">${feld("m_firma", "Name der Firma", m.firma, { k: "firma" })}
+          ${haken("m_nennung", "Darf auf der Seite als Unterstützer genannt werden", m.nennung, "nennung")}</div>
+        <div class="cols">${feld("m_vn", m.art === "firma" ? "Vorname (Ansprechpartner/in)" : "Vorname", m.vorname, { k: "vorname" })}${feld("m_nn", "Nachname", m.nachname, { k: "nachname" })}</div>
         ${feld("m_str", "Straße und Hausnummer", m.strasse, { k: "strasse" })}
         <div class="cols plz">${feld("m_plz", "PLZ", m.plz, { k: "plz", attrs: 'inputmode="numeric" maxlength="5"' })}${feld("m_ort", "Ort", m.ort, { k: "ort" })}</div>
         <div class="cols">${feld("m_mail", "E-Mail", m.email, { k: "email", type: "email" })}${feld("m_tel", "Telefon", m.telefon, { k: "telefon", type: "tel" })}</div>
@@ -175,10 +178,13 @@
         <div id="mDelBox"></div></form>`, (bg, zu) => {
       const f = $("#mf", bg);
       $("#m_aus", bg).onchange = (e) => { if (e.target.value) $("#m_st", bg).value = "ausgetreten"; };
+      $("#m_art", bg).onchange = (e) => { $("#m_firmaBox", bg).hidden = e.target.value !== "firma"; };
       f.onsubmit = async (e) => {
         e.preventDefault(); const er = $("#mf_err", bg); er.hidden = true;
         const d = datenSammeln(f);
-        if (!d.vorname && !d.nachname) { er.textContent = "Bitte mindestens einen Namen eintragen."; er.hidden = false; return; }
+        if (!d.vorname && !d.nachname && !d.firma) { er.textContent = "Bitte mindestens einen Namen eintragen."; er.hidden = false; return; }
+        if (d.art === "firma" && d.firma.length < 2) { er.textContent = "Bitte den Namen der Firma eintragen."; er.hidden = false; return; }
+        if (d.art !== "firma") { d.firma = ""; d.nennung = false; }
         d.iban = d.iban.replace(/\s+/g, "").toUpperCase(); d.bic = d.bic.toUpperCase();
         d.beitrag = d.beitrag === "" ? null : parseFloat(String(d.beitrag).replace(",", "."));
         if (d.beitrag != null && isNaN(d.beitrag)) { er.textContent = "Beitrag bitte als Zahl eintragen, z. B. 24."; er.hidden = false; return; }
@@ -193,7 +199,7 @@
 
   /* Import aus CSV oder Excel */
   const SPALTEN = {
-    mitgliedsnr: ["nr", "mitgliedsnr", "mitgliedsnummer", "nummer", "mitgliednr"], vorname: ["vorname", "firstname"], nachname: ["nachname", "familienname", "lastname", "zuname"],
+    mitgliedsnr: ["nr", "mitgliedsnr", "mitgliedsnummer", "nummer", "mitgliednr"], firma: ["firma", "unternehmen", "firmenname", "betrieb"], art: ["art", "typ", "mitgliedsart"], vorname: ["vorname", "firstname"], nachname: ["nachname", "familienname", "lastname", "zuname"],
     name: ["name", "vornamename", "namevorname", "vollername"], strasse: ["strasse", "strassehausnummer", "strassenr", "adresse", "anschrift", "str"], plz: ["plz", "postleitzahl"],
     ort: ["ort", "wohnort", "stadt", "plzort"], email: ["email", "emailadresse", "mail"], telefon: ["telefon", "tel", "handy", "mobil", "telefonnummer", "mobilnummer"],
     kind: ["kind", "kinder", "gruppe", "kindgruppe", "namedeskindes"], beitrag: ["beitrag", "jahresbeitrag", "betrag", "mitgliedsbeitrag", "beitrageuro"], newsletter: ["newsletter", "emailnewsletter"],
@@ -248,7 +254,8 @@
       const g = (k) => zuordnung[k] === undefined ? "" : r[zuordnung[k]];
       const s = (k) => String(g(k) ?? "").trim();
       const m = {};
-      ["mitgliedsnr", "vorname", "nachname", "strasse", "plz", "ort", "email", "telefon", "kind", "kontoinhaber", "bic", "bank", "mandatsreferenz", "notiz"].forEach(k => m[k] = s(k));
+      ["mitgliedsnr", "firma", "vorname", "nachname", "strasse", "plz", "ort", "email", "telefon", "kind", "kontoinhaber", "bic", "bank", "mandatsreferenz", "notiz"].forEach(k => m[k] = s(k));
+      m.art = m.firma || /firma|unternehmen|gewerb/i.test(s("art")) ? "firma" : "person";
       if (zuordnung.name !== undefined && !m.vorname && !m.nachname) {
         const n = s("name");
         if (n.includes(",")) { const [a, b] = n.split(","); m.nachname = a.trim(); m.vorname = (b || "").trim(); }
@@ -263,14 +270,14 @@
       m.eintritt = wertDatum(g("eintritt")); m.austritt = wertDatum(g("austritt"));
       m.status = /aus|gek|inaktiv/i.test(s("status")) || m.austritt ? "ausgetreten" : "aktiv";
       return m;
-    }).filter(m => m.vorname || m.nachname);
+    }).filter(m => m.vorname || m.nachname || m.firma);
     return { liste, zuordnung, unbekannt };
   }
   function importDialog(vorhanden) {
-    const NAMEN = { mitgliedsnr: "Nr.", vorname: "Vorname", nachname: "Nachname", name: "Name", strasse: "Straße", plz: "PLZ", ort: "Ort", email: "E-Mail", telefon: "Telefon", kind: "Kind/Gruppe", beitrag: "Beitrag", newsletter: "Newsletter", kontoinhaber: "Kontoinhaber", iban: "IBAN", bic: "BIC", bank: "Bank", mandatsreferenz: "Mandatsreferenz", eintritt: "Eintritt", austritt: "Austritt", status: "Status", notiz: "Notiz" };
+    const NAMEN = { firma: "Firma", art: "Art", mitgliedsnr: "Nr.", vorname: "Vorname", nachname: "Nachname", name: "Name", strasse: "Straße", plz: "PLZ", ort: "Ort", email: "E-Mail", telefon: "Telefon", kind: "Kind/Gruppe", beitrag: "Beitrag", newsletter: "Newsletter", kontoinhaber: "Kontoinhaber", iban: "IBAN", bic: "BIC", bank: "Bank", mandatsreferenz: "Mandatsreferenz", eintritt: "Eintritt", austritt: "Austritt", status: "Status", notiz: "Notiz" };
     sheet(`<h2>Mitgliederliste importieren</h2>
       <div class="stack" style="--gap:12px;margin-top:12px">
-        <p class="mute small">Excel-Datei (.xlsx) oder CSV. Die erste Zeile muss Spaltenüberschriften enthalten, z. B. <b>Vorname, Nachname, Straße, PLZ, Ort, E-Mail, Beitrag, IBAN, Eintritt</b>. Die Reihenfolge ist egal, fehlende Spalten bleiben leer.</p>
+        <p class="mute small">Excel-Datei (.xlsx) oder CSV. Die erste Zeile muss Spaltenüberschriften enthalten, z. B. <b>Vorname, Nachname, Straße, PLZ, Ort, E-Mail, Beitrag, IBAN, Eintritt</b>. Für Firmen eine Spalte <b>Firma</b>. Die Reihenfolge ist egal, fehlende Spalten bleiben leer.</p>
         <div class="field"><label for="imp_datei">Datei auswählen</label><input id="imp_datei" type="file" accept=".xlsx,.xlsm,.xls,.ods,.csv,.txt,text/csv"></div>
         <div id="imp_vorschau"></div></div>`, (bg, zu) => {
       $("#imp_datei", bg).onchange = async (e) => {
@@ -281,14 +288,14 @@
           if (zeilen.length < 2) throw new Error("Die Datei enthält keine Datenzeilen.");
           const { liste, zuordnung, unbekannt } = zeilenZuMitgliedern(zeilen);
           if (!liste.length) throw new Error("Keine Namen gefunden. Heißen die Spalten „Vorname“ und „Nachname“ bzw. „Name“?");
-          const schluessel = (m) => (m.vorname + "|" + m.nachname + "|" + (m.email || "")).toLowerCase();
+          const schluessel = (m) => ((m.firma || "") + "|" + m.vorname + "|" + m.nachname + "|" + (m.email || "")).toLowerCase();
           const da = new Set(vorhanden.map(schluessel));
           const neu = liste.filter(m => !da.has(schluessel(m))), doppelt = liste.length - neu.length;
           const ohneIban = neu.filter(m => !m.iban).length;
           ziel.innerHTML = `<div class="notice">${ICON.info}<div class="stack" style="--gap:6px"><p><b>${neu.length} neue Mitglieder</b> erkannt${doppelt ? `, ${doppelt} sind schon vorhanden und werden übersprungen` : ""}.</p>
               <p class="small">Erkannte Spalten: ${Object.keys(zuordnung).map(k => NAMEN[k]).join(", ")}${unbekannt.length ? `<br>Nicht übernommen: ${unbekannt.map(esc).join(", ")}` : ""}${ohneIban ? `<br>${ohneIban} ohne IBAN` : ""}</p></div></div>
             <div class="tablewrap" style="margin-top:10px"><table><thead><tr><th>Name</th><th>Ort</th><th>E-Mail</th><th>Beitrag</th><th>IBAN</th><th>Eintritt</th></tr></thead><tbody>
-              ${neu.slice(0, 8).map(m => `<tr><td>${esc(m.nachname)}, ${esc(m.vorname)}</td><td>${esc(m.plz)} ${esc(m.ort)}</td><td>${esc(m.email)}</td><td class="tnum">${m.beitrag != null ? euro(m.beitrag) : "–"}</td><td class="tnum">${m.iban ? esc(m.iban.slice(0, 4) + " … " + m.iban.slice(-4)) : "–"}</td><td class="tnum">${datumDE(m.eintritt)}</td></tr>`).join("")}
+              ${neu.slice(0, 8).map(m => `<tr><td>${m.firma ? `<b>${esc(m.firma)}</b> · ` : ""}${esc(m.nachname)}, ${esc(m.vorname)}</td><td>${esc(m.plz)} ${esc(m.ort)}</td><td>${esc(m.email)}</td><td class="tnum">${m.beitrag != null ? euro(m.beitrag) : "–"}</td><td class="tnum">${m.iban ? esc(m.iban.slice(0, 4) + " … " + m.iban.slice(-4)) : "–"}</td><td class="tnum">${datumDE(m.eintritt)}</td></tr>`).join("")}
             </tbody></table></div>${neu.length > 8 ? `<p class="mute small" style="margin-top:6px">… und ${neu.length - 8} weitere</p>` : ""}
             <div class="row" style="margin-top:12px"><button class="btn green" id="imp_los" ${neu.length ? "" : "disabled"}>${neu.length} Mitglieder importieren</button><button class="btn sec" data-zu>Abbrechen</button></div>`;
           $("#imp_los", bg).onclick = async (ev) => {
@@ -501,6 +508,7 @@
           <div class="cols">${feld("v_bic", "BIC", b.bic, { k: "bank.bic" })}${feld("v_inst", "Bank", b.institut, { k: "bank.institut" })}</div></div>
         <div class="card stack" style="--gap:14px"><h2>Mitgliedschaft</h2>
           <div class="cols">${feld("v_beitr", "Beiträge zur Auswahl in €", (V.beitraege || []).join(", "), { k: "beitraege", hint: "Mit Komma getrennt, z. B. 12, 24, 48" })}${feld("v_min", "Mindestbetrag bei „eigener Betrag“", V.mindestbeitrag, { k: "mindestbeitrag", attrs: 'inputmode="decimal"' })}</div>
+          <div class="cols">${feld("v_beitrF", "Beiträge für Firmen in €", (V.beitraegeFirma || []).join(", "), { k: "beitraegeFirma", hint: "Mit Komma getrennt, z. B. 50, 100, 250" })}${feld("v_minF", "Mindestbetrag Firmen", V.mindestbeitragFirma, { k: "mindestbeitragFirma", attrs: 'inputmode="decimal"' })}</div>
           <div class="cols">${feld("v_zeit", "Zeitraum", V.beitragZeitraum, { k: "beitragZeitraum", ph: "pro Kindergartenjahr" })}${feld("v_glid", "Gläubiger-ID (SEPA)", V.glaeubigerId, { k: "glaeubigerId", hint: "Leer lassen, solange keine vorhanden ist." })}</div></div>
         <div class="card stack" style="--gap:14px"><h2>Rechtliches</h2>
           ${feld("v_reg", "Registergericht und Nummer", V.registergericht, { k: "registergericht", ph: "z. B. Amtsgericht Kleve, VR 1234" })}
@@ -522,13 +530,15 @@
     $("#vf", box).onsubmit = async (e) => {
       e.preventDefault(); const er = $("#vf_err", box); er.hidden = true;
       const d = datenSammeln($("#vf", box));
-      const beitraege = String(d.beitraege).split(/[;,\s]+/).map(x => parseFloat(x.replace(",", "."))).filter(x => x > 0);
+      const zahlen = (t) => String(t || "").split(/[;,\s]+/).map(x => parseFloat(x.replace(",", "."))).filter(x => x > 0);
+      const beitraege = zahlen(d.beitraege), beitraegeFirma = zahlen(d.beitraegeFirma);
       if (!d.name) { er.textContent = "Bitte den Vereinsnamen eintragen."; er.hidden = false; return; }
       if (!beitraege.length) { er.textContent = "Bitte mindestens einen Beitrag eintragen."; er.hidden = false; return; }
       const neu = { ...V, name: d.name, ort: d.ort, kita: d.kita, zweck: d.zweck, zitat: d.zitat1 || d.zitat2 ? [d.zitat1, d.zitat2] : null,
         vorstand: vorstand.filter(m => m.rolle.trim() || m.name.trim()).map(m => ({ rolle: m.rolle.trim(), name: m.name.trim() })),
         kontakt: { ...V.kontakt, ...d.kontakt }, papierAntrag: d.papierAntrag, bank: { ...V.bank, ...d.bank }, beitraege,
-        mindestbeitrag: parseFloat(String(d.mindestbeitrag).replace(",", ".")) || Math.min(...beitraege), beitragZeitraum: d.beitragZeitraum || "pro Jahr",
+        mindestbeitrag: parseFloat(String(d.mindestbeitrag).replace(",", ".")) || Math.min(...beitraege),
+        beitraegeFirma: beitraegeFirma.length ? beitraegeFirma : [50, 100, 250], mindestbeitragFirma: parseFloat(String(d.mindestbeitragFirma).replace(",", ".")) || (beitraegeFirma.length ? Math.min(...beitraegeFirma) : 50), beitragZeitraum: d.beitragZeitraum || "pro Jahr",
         glaeubigerId: d.glaeubigerId, registergericht: d.registergericht, gemeinnuetzig: !!d.gemeinnuetzig, kitaInfo: { ...V.kitaInfo, ...d.kitaInfo } };
       delete neu.demoListen;
       try { await D.inhaltSpeichern("verein", neu); A.aktualisieren({ verein: neu }); toast("Vereinsdaten gespeichert"); }

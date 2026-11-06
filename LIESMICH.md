@@ -69,6 +69,14 @@ Voraussetzung: `supabase/erweiterung-verwaltung.sql` einmal im SQL-Editor ausfü
 - Gesamtsicherung herunterladen und sicher aufbewahren.
 - Danach entfernt der Nachfolger den alten Zugang.
 
+## Firmenmitgliedschaft
+- Eigener Antrag unter `#mitglied-firma` (auch über „Als Firma“ im normalen Antrag). Beitragsstufen und Mindestbetrag
+  für Firmen stehen in der Verwaltung unter „Verein“.
+- Firmen können freiwillig als Unterstützer auf der Seite „Verein“ genannt werden (nur der Firmenname).
+- Spendenbescheinigung: noch nicht eingebaut. Ob und wie sie für Mitgliedsbeiträge ausgestellt werden darf, hängt
+  von Satzung und Freistellungsbescheid ab – bitte mit dem Finanzamt/Steuerberater klären.
+- Datenbank: `supabase/erweiterung-firmen.sql` (bereits eingespielt).
+
 ## 5. Änderungen am Programm veröffentlichen
 Nach jeder Änderung in `index.html` die `?v=1` hochzählen und in `sw.js` die `VERSION`
 (z. B. `fv-2`). Sonst sehen installierte Apps noch die alte Fassung.

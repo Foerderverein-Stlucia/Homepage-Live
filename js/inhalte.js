@@ -21,6 +21,8 @@ window.FV_INHALT = {
     ],
     beitraege: [12, 24, 48],           // Beiträge in Euro pro Kindergartenjahr (wie Flyer)
     beitragZeitraum: "pro Kindergartenjahr",
+    beitraegeFirma: [50, 100, 250],     // Beiträge für Firmen (Vorschlag, in der Verwaltung änderbar)
+    mindestbeitragFirma: 50,
     mindestbeitrag: 12,
     glaeubigerId: "",                  // Gläubiger-ID der Bundesbank eintragen, sobald bekannt (wird sonst ausgeblendet)
     bank: { inhaber: "Förderverein der kath. KiTa St. Lucia Walbeck e.V.", iban: "DE89 3206 1384 2006 2290 10", bic: "GENODED1GDL", institut: "Volksbank an der Niers eG" },
