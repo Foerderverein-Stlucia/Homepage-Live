@@ -29,11 +29,17 @@
     const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([inhalt], { type: typ })); a.download = name; a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 4000);
   }
-  function sicherheitsfrage(ziel, text, knopf, ja) {
+  function sicherheitsfrage(ziel, text, knopf, ja, mitPasswort) {
     ziel.innerHTML = `<div class="notice" style="margin-top:12px;background:var(--tint-red)"><div class="stack" style="--gap:8px"><p>${text}</p>
+      ${mitPasswort ? `<div class="field"><label>Zur Sicherheit: dein Passwort</label><input type="password" data-pw autocomplete="current-password"></div>` : ""}
       <div class="row"><button type="button" class="btn small" style="background:var(--err);color:#fff" data-ja>${knopf}</button><button type="button" class="btn sec small" data-nein>Abbrechen</button></div></div></div>`;
     $("[data-nein]", ziel).onclick = () => ziel.innerHTML = "";
-    $("[data-ja]", ziel).onclick = async () => { $("[data-ja]", ziel).disabled = true; try { await ja(); } catch (e) { toast(e.message); } };
+    const los = async () => {
+      const b = $("[data-ja]", ziel); b.disabled = true;
+      try { if (mitPasswort) await D.passwortPruefen($("[data-pw]", ziel).value); await ja(); } catch (e) { toast(e.message); b.disabled = false; }
+    };
+    $("[data-ja]", ziel).onclick = los;
+    if (mitPasswort) { const f = $("[data-pw]", ziel); f.onkeydown = (e) => { if (e.key === "Enter") { e.preventDefault(); los(); } }; f.focus(); }
   }
   const slug = (t) => String(t || "").toLowerCase().replace(/ä/g, "ae").replace(/ö/g, "oe").replace(/ü/g, "ue").replace(/ß/g, "ss").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40) || "eintrag";
   const eindeutig = (basis, vorhanden) => { let id = basis, n = 2; while (vorhanden.includes(id)) id = basis + "-" + n++; return id; };
@@ -193,7 +199,7 @@
       };
       const del = $("#mDel", bg);
       if (del) del.onclick = () => sicherheitsfrage($("#mDelBox", bg), `<b>${esc(m.vorname)} ${esc(m.nachname)} wirklich löschen?</b> Für Ausgetretene besser den Status auf „ausgetreten“ setzen, damit die Daten für die Aufbewahrungsfrist erhalten bleiben.`, "Endgültig löschen",
-        async () => { await D.mitgliedLoeschen(m.id); zu(); toast("Gelöscht"); A.render(); });
+        async () => { await D.mitgliedLoeschen(m.id); zu(); toast("Gelöscht"); A.render(); }, true);
     });
   }
 
@@ -599,7 +605,7 @@
       catch (e) { toast(e.message); b.disabled = false; }
     });
     $$("[data-ab]", box).forEach(b => b.onclick = () => sicherheitsfrage($$("[data-abbox]", box).find(x => x.dataset.abbox === b.dataset.ab), "<b>Anfrage ablehnen?</b> Das Konto wird gelöscht.", "Ablehnen",
-      async () => { await D.zugangAblehnen(b.dataset.ab); toast("Anfrage abgelehnt"); A.render(); }));
+      async () => { await D.zugangAblehnen(b.dataset.ab); toast("Anfrage abgelehnt"); A.render(); }, true));
     $$("[data-amt]", box).forEach(b => b.onclick = () => {
       const m = liste.find(x => x.user_id === b.dataset.amt); const ziel = $$("[data-mbox]", box).find(x => x.dataset.mbox === m.user_id);
       ziel.innerHTML = `<div class="cols"><div class="field"><label for="mn_${esc(m.user_id)}">Name</label><input id="mn_${esc(m.user_id)}" type="text" value="${esc(m.name || "")}"></div>
@@ -613,7 +619,7 @@
       };
     });
     $$("[data-rm]", box).forEach(b => b.onclick = () => sicherheitsfrage($$("[data-mbox]", box).find(x => x.dataset.mbox === b.dataset.rm), `<b>Zugang von ${esc(b.dataset.n)} entfernen?</b> Die Person kann dann nichts mehr in der Verwaltung sehen oder ändern. Den Eintrag unter „Vorstand“ auf der Seite ändert ihr in den Vereinsdaten.`, "Entfernen",
-      async () => { await D.vorstandEntfernen(b.dataset.rm); toast("Zugang entfernt"); A.render(); }));
+      async () => { await D.vorstandEntfernen(b.dataset.rm); toast("Zugang entfernt"); A.render(); }, true));
     $("#regKopie", box).onclick = async () => { try { await navigator.clipboard.writeText(link); toast("Link kopiert"); } catch (e) { const r = document.createRange(); r.selectNodeContents($("#regLink", box)); getSelection().removeAllRanges(); getSelection().addRange(r); } };
     const rt = $("#regTeilen", box); if (rt) rt.onclick = () => navigator.share({ title: "Zugang zur Verwaltung des Fördervereins", url: link }).catch(() => {});
     $("#pwf", box).onsubmit = async (e) => {

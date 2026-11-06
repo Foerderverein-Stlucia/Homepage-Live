@@ -122,6 +122,7 @@
     async zugangAblehnen(id) { store.set("demoAnfragen", (store.get("demoAnfragen", []) || []).filter(y => y.user_id !== id)); },
     async vorstandHinzufuegen(email, name) { const a = store.get("demoVorstand", []) || []; a.push({ user_id: uid(), name, email, ich: false }); store.set("demoVorstand", a); },
     async vorstandEntfernen(id) { store.set("demoVorstand", (store.get("demoVorstand", []) || []).filter(x => x.user_id !== id)); },
+    async passwortPruefen(pw) { if (pw !== (C.demoPasswort || "demo")) throw new Error("Passwort falsch."); },
     async passwortAendern() { throw new Error("Im Vorschau-Modus gibt es kein echtes Passwort."); },
     async unterstuetzer() { return (store.get("mitglieder", []) || []).filter(m => m.art === "firma" && m.nennung && m.status !== "ausgetreten" && m.firma).map(m => m.firma).sort((a, b) => a.localeCompare(b, "de")); },
     zuruecksetzen() { try { ["fv_demo", "fv_meine", "fv_inhalte", "fv_mitglieder", "fv_demoVorstand", "fv_demoAnfragen"].forEach(k => localStorage.removeItem(k)); } catch (e) {} }
@@ -193,6 +194,12 @@
       store.set("sitzung", { access_token: j.access_token, refresh_token: j.refresh_token, email });
       const ok = await req("/rest/v1/rpc/ist_vorstand", { method: "POST", body: {}, auth: true });
       if (!ok) { store.set("sitzung", null); throw new Error("Dein Zugang ist noch nicht freigeschaltet. Ein Vorstandsmitglied muss ihn erst in der Verwaltung bestätigen."); }
+    },
+    async passwortPruefen(pw) {
+      const s = sitzung(); if (!s || !s.email) throw new Error("Bitte erneut anmelden.");
+      if (!pw) throw new Error("Bitte dein Passwort eingeben.");
+      const r = await fetch(base + "/auth/v1/token?grant_type=password", { method: "POST", headers: { apikey: C.supabaseKey, "Content-Type": "application/json" }, body: JSON.stringify({ email: s.email, password: pw }) });
+      if (!r.ok) { const j = await r.json().catch(() => ({})); throw new Error(r.status === 429 ? "Zu viele Versuche. Bitte kurz warten." : "Passwort falsch."); }
     },
     async abmelden() { store.set("sitzung", null); },
     angemeldet() { const s = sitzung(); return !!(s && s.access_token); },
