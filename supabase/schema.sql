@@ -55,6 +55,7 @@ create table if not exists public.mitgliedsantraege (
   iban text not null check (iban ~ '^[A-Z]{2}[0-9]{2}[A-Z0-9]{11,30}$'),
   sepa_mandat boolean not null check (sepa_mandat),
   datenschutz boolean not null check (datenschutz),
+  newsletter boolean not null default false,
   status text not null default 'neu' check (status in ('neu','angenommen','abgelehnt')),
   notiz text default ''
 );
@@ -184,3 +185,6 @@ grant execute on function public.ist_vorstand() to anon, authenticated;
 -- insert into public.vorstand (user_id, name)
 --   select id, 'Name' from auth.users where email = 'vorstand@beispiel.de';
 -- ------------------------------------------------------------
+
+-- Nachtrag (für bereits eingerichtete Datenbanken): Newsletter-Häkchen
+alter table public.mitgliedsantraege add column if not exists newsletter boolean not null default false;

@@ -144,7 +144,13 @@
       return await req("/rest/v1/rpc/eintragen", { method: "POST", body: { p_platz: platzId, p_name: name, p_kontakt: kontakt || "" } });
     },
     async austragen(token) { return await req("/rest/v1/rpc/austragen", { method: "POST", body: { p_token: token } }); },
-    async antrag(a) { await req("/rest/v1/mitgliedsantraege", { method: "POST", body: a, prefer: "return=minimal" }); },
+    async antrag(a) {
+      try { await req("/rest/v1/mitgliedsantraege", { method: "POST", body: a, prefer: "return=minimal" }); }
+      catch (e) { // Falls die Spalte "newsletter" in der Datenbank noch fehlt
+        if (!/newsletter/i.test(e.message)) throw e;
+        const { newsletter, ...rest } = a; await req("/rest/v1/mitgliedsantraege", { method: "POST", body: rest, prefer: "return=minimal" });
+      }
+    },
     async anmelden(email, pw) {
       const r = await fetch(base + "/auth/v1/token?grant_type=password", { method: "POST", headers: { apikey: C.supabaseKey, "Content-Type": "application/json" }, body: JSON.stringify({ email, password: pw }) });
       const j = await r.json().catch(() => ({}));

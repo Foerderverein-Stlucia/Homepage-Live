@@ -54,7 +54,12 @@
     kueche: svg('<path d="M4 11h16v3a6 6 0 01-6 6h-4a6 6 0 01-6-6z"/><path d="M9 7c0-1 1-1.5 1-2.5M13 7c0-1 1-1.5 1-2.5M2 11h2M20 11h2"/>'),
     ausflug: svg('<rect x="3" y="7" width="18" height="10" rx="3"/><path d="M3 12h18M8 7v5M14 7v5"/><circle cx="7.5" cy="18.5" r="1.5"/><circle cx="16.5" cy="18.5" r="1.5"/>'),
     stern: svg('<path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/>'),
-    herz: svg('<path d="M12 20s-7-4.4-7-10a4 4 0 017-2.6A4 4 0 0119 10c0 5.6-7 10-7 10z"/>')
+    herz: svg('<path d="M12 20s-7-4.4-7-10a4 4 0 017-2.6A4 4 0 0119 10c0 5.6-7 10-7 10z"/>'),
+    wasser: svg('<path d="M12 3s-6 6.5-6 11a6 6 0 0012 0c0-4.5-6-11-6-11z"/><path d="M9 15a3 3 0 003 3"/>'),
+    reck: svg('<path d="M4 21V6M20 21V6M4 8h16"/><path d="M10 8v4l-2 4M10 12l2 4M10 12h-1.5"/><circle cx="10" cy="10.2" r=".1"/>'),
+    steine: svg('<ellipse cx="12" cy="18" rx="8" ry="2.5"/><ellipse cx="12" cy="12.5" rx="6" ry="2.2"/><ellipse cx="12" cy="7.5" rx="4" ry="1.8"/>'),
+    wippe: svg('<path d="M6 21h12M12 21v-3"/><path d="M10 18c-1-1-1-2 0-3s1-2 0-3"/><path d="M5 11h10l2-3h2M7 11V8h5v3"/><circle cx="7" cy="12.5" r="1.5"/><circle cx="15" cy="12.5" r="1.5"/>'),
+    luft: svg('<rect x="7" y="4" width="10" height="16" rx="2"/><path d="M10 8h4M10 11h4M10 14h4M2 9c1.5-1 2.5 1 4 0M2 14c1.5-1 2.5 1 4 0M18 9c1.5-1 2.5 1 4 0M18 14c1.5-1 2.5 1 4 0"/>')
   };
 
   /* ---------- Hilfen ---------- */
@@ -221,11 +226,18 @@
           ${kompakt || PREVIEW ? "" : `<button class="btn small sec" data-ics="${esc(t.id)}">${ICON.kal}In den Kalender</button>`}
         </div></div></article>`;
   }
+  const projSumme = () => I.projekte.reduce((s, p) => s + (+p.betrag || 0), 0);
+  const projJahre = () => I.projekte.map(p => p.jahr).filter(Boolean);
+  function summenZeile() {
+    const sum = projSumme(), j = projJahre(), n = I.projekte.length;
+    return sum ? `<div class="total"><b class="tnum">${euro(sum)}</b><span class="mute">für ${n} Projekte${j.length ? " seit " + Math.min(...j) : ""}</span></div>`
+               : `<div class="total"><b class="tnum">${n} Projekte</b><span class="mute">dank eurer Beiträge und Spenden verwirklicht</span></div>`;
+  }
   function projektKarte(p) {
     return `<a class="card link proj" href="#projekt-${esc(p.id)}" style="${farbe(p.farbe)}">
-      <span class="badge">${ICON[p.symbol] || ICON.stern}</span>
+      ${p.bild ? `<img class="badge photo" src="${esc(p.bild)}" alt="" loading="lazy">` : `<span class="badge">${ICON[p.symbol] || ICON.stern}</span>`}
       <span style="min-width:0"><h3>${esc(p.titel)}</h3><p>${esc(p.kurz)}</p>
-      <span class="chips"><span class="chip c tnum">${p.jahr}</span><span class="chip tnum">${euro(p.betrag)}</span></span></span></a>`;
+      ${p.jahr || p.betrag ? `<span class="chips">${p.jahr ? `<span class="chip c tnum">${p.jahr}</span>` : ""}${p.betrag ? `<span class="chip tnum">${euro(p.betrag)}</span>` : ""}</span>` : ""}</span></a>`;
   }
   function andere(belegt, meineHier) {
     const rest = belegt.slice();
@@ -242,7 +254,6 @@
     const naechste = termineKommend().slice(0, 2);
     let listen = []; try { listen = await D.listen(); } catch (e) {}
     const offen = listen.filter(l => frei(l) > 0 && (!l.datum || dt(l.datum) >= heute()));
-    const summe = I.projekte.reduce((s, p) => s + p.betrag, 0);
     const dots = [["pink", 0, 22, 22], ["teal", 78, 0, 22], ["blue", 50, 30, 22], ["green", 30, 52, 22], ["orange", 72, 50, 22], ["purple", 92, 76, 22], ["yellow", 0, 66, 30], ["red", 30, 84, 22]];
     v.innerHTML = `
       <section class="hero">
@@ -263,9 +274,10 @@
       </section>
       <section>
         <div class="sec-head"><h2>Das haben wir geschafft</h2><a href="#projekte">Alle Projekte</a></div>
-        <div class="total"><b class="tnum">${euro(summe)}</b><span class="mute">für ${I.projekte.length} Projekte seit ${Math.min(...I.projekte.map(p => p.jahr))}</span></div>
+        ${summenZeile()}
         <div class="grid2">${I.projekte.slice(0, 2).map(projektKarte).join("")}</div>
-      </section>`;
+      </section>
+      ${V.zitat ? `<section><blockquote class="zitat"><p>„${esc(V.zitat[0])}</p><p>${esc(V.zitat[1])}“</p></blockquote></section>` : ""}`;
     const ib = $("#instStart"); if (ib) ib.onclick = installieren;
   };
 
@@ -365,7 +377,7 @@
   /* Aushänge: aushang-mitglied, aushang-mithelfen, aushang-<listenId> */
   SEITEN.aushang = async (v, id) => {
     let titel, text, ziel, tabelle = "", farbeA = "green";
-    if (id === "mitglied") { titel = "Werdet Mitglied im Förderverein!"; text = "Ab " + euro(V.mindestbeitrag) + " im Jahr helft ihr, dass Ausflüge, Spielgeräte und Feste für unsere Kinder möglich werden. Den Antrag könnt ihr direkt am Handy ausfüllen."; ziel = "mitglied"; farbeA = "blue"; }
+    if (id === "mitglied") { titel = "Werdet Mitglied im Förderverein!"; text = "Ab " + euro(V.mindestbeitrag) + " " + (V.beitragZeitraum || "im Jahr") + " helft ihr, dass Ausflüge, Spielgeräte und Feste für unsere Kinder möglich werden. Den Antrag könnt ihr direkt am Handy ausfüllen."; ziel = "mitglied"; farbeA = "blue"; }
     else if (id === "mithelfen") { titel = "Helferinnen und Helfer gesucht"; text = "Für Feste und Aktionen brauchen wir eure Unterstützung. Scannt den Code, sucht euch einen freien Platz aus und tragt euch ein."; ziel = "mithelfen"; }
     else if (id === "termine") { titel = "Unsere Termine"; text = "Alle Feste und Aktionen des Fördervereins. Mit einem Tipp im eigenen Kalender."; ziel = "termine"; farbeA = "orange"; }
     else {
@@ -396,11 +408,10 @@
   };
 
   SEITEN.projekte = (v) => {
-    const summe = I.projekte.reduce((s, p) => s + p.betrag, 0);
-    const jahre = [...new Set(I.projekte.map(p => p.jahr))].sort((a, b) => b - a);
+    const jahre = [...new Set(I.projekte.map(p => p.jahr || 0))].sort((a, b) => b - a);
     v.innerHTML = kopf("pink", "Projekte", "Das haben wir geschafft", "Mit Mitgliedsbeiträgen, Spenden und den Erlösen unserer Feste finanzieren wir, was im Kita-Alltag fehlt.") +
-      `<div class="total"><b class="tnum">${euro(summe)}</b><span class="mute">für ${I.projekte.length} abgeschlossene Projekte</span></div>` +
-      jahre.map(j => `<h2 class="month">${j}</h2><div class="grid2">${I.projekte.filter(p => p.jahr === j).map(projektKarte).join("")}</div>`).join("") +
+      summenZeile() +
+      jahre.map(j => `${jahre.length > 1 || j ? `<h2 class="month">${j || "Bereits umgesetzt"}</h2>` : ""}<div class="grid2">${I.projekte.filter(p => (p.jahr || 0) === j).map(projektKarte).join("")}</div>`).join("") +
       `<section><div class="card"><h3>Ihr habt eine Idee?</h3><p class="mute" style="margin-top:4px">Vorschläge für neue Projekte nehmen wir gern entgegen, zum Beispiel bei der Mitgliederversammlung oder per E-Mail.</p><p style="margin-top:12px"><a class="btn sec small" href="#kontakt">Kontakt aufnehmen</a></p></div></section>`;
   };
 
@@ -408,16 +419,17 @@
     const p = I.projekte.find(x => x.id === id);
     if (!p) { v.innerHTML = zurueck("projekte", "Alle Projekte") + `<div class="card"><h2>Projekt nicht gefunden</h2></div>`; return; }
     v.innerHTML = zurueck("projekte", "Alle Projekte") +
-      `<div class="proj-hero" style="${farbe(p.farbe)}">${ICON[p.symbol] || ICON.stern}</div>` +
-      kopf(p.farbe, "Abgeschlossen " + p.jahr, esc(p.titel), esc(p.kurz)) +
-      `<dl class="facts"><div><dt>Förderung</dt><dd class="tnum">${euro(p.betrag)}</dd></div><div><dt>Jahr</dt><dd class="tnum">${p.jahr}</dd></div>${p.partner ? `<div><dt>Mit Hilfe von</dt><dd style="font-size:1rem">${esc(p.partner)}</dd></div>` : ""}</dl>
-      <div class="prose">${(p.text || []).map(t => `<p>${esc(t)}</p>`).join("")}</div>
+      (p.bild ? `<img class="proj-foto" src="${esc(p.bild)}" alt="${esc(p.titel)}">` : `<div class="proj-hero" style="${farbe(p.farbe)}">${ICON[p.symbol] || ICON.stern}</div>`) +
+      kopf(p.farbe, p.jahr ? "Umgesetzt " + p.jahr : "Umgesetzt", esc(p.titel), esc(p.kurz)) +
+      (p.betrag || p.jahr || p.partner ? `<dl class="facts">${p.betrag ? `<div><dt>Förderung</dt><dd class="tnum">${euro(p.betrag)}</dd></div>` : ""}${p.jahr ? `<div><dt>Jahr</dt><dd class="tnum">${p.jahr}</dd></div>` : ""}${p.partner ? `<div><dt>Mit Hilfe von</dt><dd style="font-size:1rem">${esc(p.partner)}</dd></div>` : ""}</dl>` : "") +
+      `<div class="prose">${(p.text || []).map(t => `<p>${esc(t)}</p>`).join("")}</div>
       <div class="row noprint" style="margin-top:20px"><button class="btn sec small" id="teilenBtn">${ICON.teilen}Projekt teilen</button></div>`;
     $("#teilenBtn").onclick = () => teilen(p.titel, "projekt-" + p.id);
   };
 
   SEITEN.verein = (v) => {
     v.innerHTML = kopf("purple", "Über uns", "Der Förderverein", esc(V.zweck)) +
+      (V.zitat ? `<blockquote class="zitat"><p>„${esc(V.zitat[0])}</p><p>${esc(V.zitat[1])}“</p></blockquote>` : "") +
       `<section><h2>Was wir tun</h2><div class="prose" style="margin-top:10px"><ul>
         <li>Anschaffungen, die über das Kita-Budget hinausgehen: Spielgeräte, Bücher, Musikinstrumente</li>
         <li>Zuschüsse zu Ausflügen und Projekten, damit alle Kinder mitmachen können</li>
@@ -425,7 +437,7 @@
       <section><h2>Vorstand</h2><div class="grid2" style="margin-top:10px">${V.vorstand.map(m => `<div class="card"><p class="mute small">${esc(m.rolle)}</p><p style="font-weight:700">${esc(m.name)}</p></div>`).join("")}</div></section>
       <section><h2>Gemeinsam mit der Kita</h2><div class="prose" style="margin-top:10px">${V.kitaInfo ? `<p>${esc(V.kitaInfo.text)}</p>` : ""}<p>Über jedes Projekt sprechen wir vorher mit der Kita-Leitung. So kommt das Geld dort an, wo es im Alltag wirklich gebraucht wird.</p>
         ${V.kitaInfo ? `<div class="card stack" style="--gap:6px"><p class="mute small">Kath. Kita St. Lucia</p><p>${esc(V.kitaInfo.adresse)}</p><p><a href="${esc(V.kitaInfo.link)}" target="_blank" rel="noopener">Zur Seite der Pfarrei St. Maria Magdalena</a></p></div>` : ""}</div></section>
-      <section><div class="card row" style="justify-content:space-between"><div style="flex:1 1 240px;min-width:0"><h3>Mitglied werden</h3><p class="mute small">Ab ${euro(V.mindestbeitrag)} im Jahr, jederzeit kündbar zum Jahresende.</p></div><a class="btn" href="#mitglied">Zum Antrag</a></div></section>`;
+      <section><div class="card row" style="justify-content:space-between"><div style="flex:1 1 240px;min-width:0"><h3>Mitglied werden</h3><p class="mute small">Ab ${euro(V.mindestbeitrag)} ${esc(V.beitragZeitraum || "im Jahr")}.</p></div><a class="btn" href="#mitglied">Zum Antrag</a></div></section>`;
   };
 
   SEITEN.spenden = (v) => {
@@ -436,7 +448,7 @@
         <div><p class="mute small">IBAN</p><p class="tnum" style="font-weight:700;font-size:1.15rem;letter-spacing:.02em" id="ibanTxt">${esc(b.iban)}</p></div>
         <div class="cols"><div><p class="mute small">BIC</p><p style="font-weight:700">${esc(b.bic)}</p></div><div><p class="mute small">Bank</p><p style="font-weight:700">${esc(b.institut)}</p></div></div>
         <div><button class="btn sec small" id="kopierBtn">IBAN kopieren</button></div></div>
-      <section><h2>Spendenquittung</h2><p class="prose" style="margin-top:8px">${V.gemeinnuetzig ? "Der Verein ist als gemeinnützig anerkannt. Bis 300 Euro reicht dem Finanzamt der Kontoauszug als Nachweis. Für höhere Beträge stellen wir gern eine Zuwendungsbestätigung aus; gebt dafür bei der Überweisung eure Adresse an." : ""}</p></section>`;
+      <section><h2>Spendenquittung</h2><p class="prose" style="margin-top:8px">${V.gemeinnuetzig ? "Der Verein ist als gemeinnützig anerkannt. Bis 300 Euro reicht dem Finanzamt der Kontoauszug als Nachweis. Für höhere Beträge stellen wir gern eine Zuwendungsbestätigung aus; gebt dafür bei der Überweisung eure Adresse an." : "Ihr braucht eine Spendenbescheinigung? Schreibt uns an " + esc(V.kontakt.email) + "."}</p></section>`;
     $("#kopierBtn").onclick = async () => { try { await navigator.clipboard.writeText(b.iban.replace(/\s/g, "")); toast("IBAN kopiert"); } catch (e) { const r = document.createRange(); r.selectNodeContents($("#ibanTxt")); getSelection().removeAllRanges(); getSelection().addRange(r); } };
   };
 
@@ -461,6 +473,7 @@
       <p><b>Verantwortlich</b><br>${esc(V.name)}, ${esc(V.kontakt.adresse)}, ${esc(V.kontakt.email)}</p>
       <h3>Welche Daten wir verarbeiten</h3>
       <ul><li><b>Mitgliedsantrag:</b> Name, Anschrift, E-Mail, Telefon (freiwillig), Bankverbindung und Beitrag. Zweck: Mitgliederverwaltung und Beitragseinzug (Art. 6 Abs. 1 lit. b DSGVO). Löschung spätestens zehn Jahre nach Austritt wegen steuerlicher Aufbewahrungspflichten.</li>
+      <li><b>Newsletter:</b> Nur wenn ihr ihn im Antrag ankreuzt, nutzen wir eure E-Mail-Adresse für Informationen zu Veranstaltungen und Aktionen (Art. 6 Abs. 1 lit. a DSGVO). Abmelden geht jederzeit per E-Mail.</li>
       <li><b>Eintragelisten:</b> Name und freiwillig eine Kontaktmöglichkeit. Öffentlich sichtbar ist nur der Vorname mit Anfangsbuchstaben des Nachnamens. Löschung nach der Veranstaltung.</li>
       <li><b>Auf eurem Gerät</b> speichert die App, für welche Plätze ihr euch eingetragen habt, damit ihr euch wieder austragen könnt. Das bleibt auf eurem Gerät.</li></ul>
       <h3>Hosting und Datenbank</h3><p>[Hoster und Datenbankanbieter mit Serverstandort eintragen, z. B. Supabase, Region Frankfurt. Mit beiden einen Vertrag zur Auftragsverarbeitung abschließen.]</p>
@@ -472,7 +485,7 @@
   /* ---------- Mitgliedsantrag ---------- */
   SEITEN.mitglied = (v) => {
     const opts = V.beitraege.map((b, i) => `<label><input type="radio" name="beitrag" value="${b}" ${i === 1 ? "checked" : ""}><span class="tnum">${euro(b)}</span></label>`).join("");
-    v.innerHTML = kopf("blue", "Mitglied werden", "Mitgliedsantrag", "Füllt den Antrag in zwei Minuten aus. Der Beitrag wird einmal im Jahr per Lastschrift eingezogen, kündbar zum Jahresende.") +
+    v.innerHTML = kopf("blue", "Mitglied werden", "Mitgliedsantrag", "Füllt den Antrag in zwei Minuten aus. Der Beitrag wird " + esc(V.beitragZeitraum || "pro Jahr") + " per Lastschrift eingezogen.") +
       `<form id="antrag" class="card" novalidate>
         <fieldset><legend>Zu eurer Person</legend>
           <div class="cols"><div class="field"><label for="a_vorname">Vorname</label><input id="a_vorname" type="text" autocomplete="given-name" required maxlength="60"></div>
@@ -484,15 +497,16 @@
             <div class="field"><label for="a_tel">Telefon <span class="mute">(freiwillig)</span></label><input id="a_tel" type="tel" autocomplete="tel" maxlength="40"></div></div>
           <div class="field"><label for="a_kind">Kind in der Kita, Gruppe <span class="mute">(freiwillig)</span></label><input id="a_kind" type="text" maxlength="120" placeholder="z. B. Mia, Gruppe Sonnenblume"></div>
         </fieldset>
-        <fieldset><legend>Jahresbeitrag</legend>
+        <fieldset><legend>Beitrag <span class="mute" style="font-size:.9rem">${esc(V.beitragZeitraum || "pro Jahr")}</span></legend>
           <div class="choice" role="radiogroup" aria-label="Jahresbeitrag">${opts}<label><input type="radio" name="beitrag" value="eigen"><span>Eigener Betrag</span></label></div>
-          <div class="field" id="eigenFeld" hidden><label for="a_eigen">Betrag in Euro pro Jahr (mindestens ${euro(V.mindestbeitrag)})</label><input id="a_eigen" type="number" inputmode="decimal" min="${V.mindestbeitrag}" step="1"></div>
+          <div class="field" id="eigenFeld" hidden><label for="a_eigen">Betrag in Euro ${esc(V.beitragZeitraum || "pro Jahr")} (mindestens ${euro(V.mindestbeitrag)})</label><input id="a_eigen" type="number" inputmode="decimal" min="${V.mindestbeitrag}" step="1"></div>
         </fieldset>
         <fieldset><legend>SEPA-Lastschriftmandat</legend>
           <div class="field"><label for="a_inhaber">Kontoinhaber/in</label><input id="a_inhaber" type="text" autocomplete="cc-name" required maxlength="120"></div>
           <div class="field"><label for="a_iban">IBAN</label><input id="a_iban" type="text" autocomplete="off" required maxlength="42" placeholder="DE.. .... .... .... .... .." spellcheck="false" style="font-variant-numeric:tabular-nums;letter-spacing:.03em"></div>
-          <p class="mandate">Ich ermächtige den ${esc(V.name)} (Gläubiger-ID ${esc(V.glaeubigerId)}), den Mitgliedsbeitrag jährlich von meinem Konto mittels Lastschrift einzuziehen. Zugleich weise ich mein Kreditinstitut an, die Lastschriften einzulösen. Ich kann innerhalb von acht Wochen, beginnend mit dem Belastungsdatum, die Erstattung des belasteten Betrages verlangen. Es gelten die mit meinem Kreditinstitut vereinbarten Bedingungen. Die Mandatsreferenz wird mir separat mitgeteilt.</p>
+          <p class="mandate">Ich ermächtige den ${esc(V.name)}${V.glaeubigerId ? " (Gläubiger-ID " + esc(V.glaeubigerId) + ")" : ""} widerruflich, den Mitgliedsbeitrag ${esc(V.beitragZeitraum || "pro Jahr")} von meinem Konto mittels Lastschrift einzuziehen. Zugleich weise ich mein Kreditinstitut an, die Lastschriften einzulösen. Ich kann innerhalb von acht Wochen, beginnend mit dem Belastungsdatum, die Erstattung des belasteten Betrages verlangen. Es gelten die mit meinem Kreditinstitut vereinbarten Bedingungen. Die Mandatsreferenz wird mir separat mitgeteilt.</p>
           <label class="check"><input type="checkbox" id="a_sepa" required><span>Ich erteile das SEPA-Lastschriftmandat.</span></label>
+          <label class="check"><input type="checkbox" id="a_nl"><span>Ja, ich möchte den E-Mail-Newsletter mit Informationen zu Veranstaltungen und Aktionen des Vereins erhalten. Abmelden geht jederzeit per E-Mail an ${esc(V.kontakt.email)}.</span></label>
           <label class="check"><input type="checkbox" id="a_ds" required><span>Ich habe die <a href="#datenschutz">Datenschutzhinweise</a> gelesen und bin mit der Speicherung meiner Daten für die Mitgliederverwaltung einverstanden.</span></label>
         </fieldset>
         <input class="hp" type="text" id="a_web" tabindex="-1" autocomplete="off" aria-hidden="true">
@@ -500,7 +514,7 @@
         <button class="btn block" type="submit">Antrag abschicken</button>
         <p class="mute small">Nach dem Abschicken bestätigt der Vorstand eure Mitgliedschaft per E-Mail.</p>
       </form>
-      <section class="noprint"><div class="card row" style="justify-content:space-between"><div style="flex:1 1 240px;min-width:0"><h3>Lieber auf Papier werben?</h3><p class="mute small">Aushang mit QR-Code zum Antrag für die Kita-Pinnwand.</p></div><a class="btn sec small" href="#aushang-mitglied">${ICON.qr}Aushang</a></div></section>`;
+      <section class="noprint"><div class="card row" style="justify-content:space-between"><div style="flex:1 1 240px;min-width:0"><h3>Lieber auf Papier?</h3><p class="mute small">${esc(V.papierAntrag || "")} Für die Pinnwand gibt es außerdem einen Aushang mit QR-Code zum Online-Antrag.</p></div><a class="btn sec small" href="#aushang-mitglied">${ICON.qr}Aushang</a></div></section>`;
     const f = $("#antrag");
     const eigen = $("#eigenFeld");
     $$('input[name="beitrag"]', f).forEach(r => r.onchange = () => { eigen.hidden = r.value !== "eigen" || !r.checked; if (!eigen.hidden) $("#a_eigen").focus(); });
@@ -536,7 +550,7 @@
       }
       const daten = { vorname: val("a_vorname"), nachname: val("a_nachname"), strasse: val("a_strasse"), plz: val("a_plz"), ort: val("a_ort"),
         email: val("a_email"), telefon: val("a_tel"), kind: val("a_kind"), beitrag, kontoinhaber: val("a_inhaber"),
-        iban: val("a_iban").replace(/\s/g, ""), sepa_mandat: true, datenschutz: true };
+        iban: val("a_iban").replace(/\s/g, ""), sepa_mandat: true, datenschutz: true, newsletter: $("#a_nl").checked };
       const btn = f.querySelector("[type=submit]"); btn.disabled = true; btn.textContent = "Wird gesendet …";
       try { await D.antrag(daten); bestaetigung(v, daten); window.scrollTo(0, 0); }
       catch (ex) { err.textContent = ex.message; err.hidden = false; btn.disabled = false; btn.textContent = "Antrag abschicken"; }
@@ -549,9 +563,9 @@
     v.innerHTML = kopf("green", "Geschafft", "Danke, " + esc(a.vorname) + "!", "Euer Antrag ist beim Vorstand angekommen. Ihr bekommt eine Bestätigung per E-Mail an " + esc(a.email) + ".") +
       `<div class="card stack" style="--gap:8px"><h3>Eure Angaben</h3>
         <p>${esc(a.vorname)} ${esc(a.nachname)}<br>${esc(a.strasse)}<br>${esc(a.plz)} ${esc(a.ort)}</p>
-        <p>Jahresbeitrag: <b class="tnum">${euro(a.beitrag)}</b></p>
+        <p>Beitrag: <b class="tnum">${euro(a.beitrag)}</b> ${esc(V.beitragZeitraum || "pro Jahr")}</p>${a.newsletter ? `<p>Newsletter: ja</p>` : ""}
         <p>Lastschrift von: ${esc(a.kontoinhaber)}, <span class="tnum">${maskiert}</span></p>
-        <p class="mute small">Gläubiger-ID ${esc(V.glaeubigerId)} · eingegangen am ${new Date().toLocaleDateString("de-DE")}</p></div>
+        <p class="mute small">${V.glaeubigerId ? "Gläubiger-ID " + esc(V.glaeubigerId) + " · " : ""}eingegangen am ${new Date().toLocaleDateString("de-DE")}</p></div>
       <div class="row noprint" style="margin-top:16px">${PREVIEW ? "" : `<button class="btn sec" onclick="window.print()">${ICON.druck}Kopie drucken</button>`}<a class="btn" href="#start">Zur Startseite</a></div>`;
   }
 
@@ -585,14 +599,14 @@
     box.innerHTML = `<div class="row" style="justify-content:space-between;margin-bottom:12px"><h1 style="font-size:1.6rem">Mitgliedsanträge</h1>
         ${PREVIEW ? "" : `<button class="btn sec small" id="csvBtn" ${a.length ? "" : "disabled"}>${ICON.install}Als Tabelle (CSV)</button>`}</div>
       <p class="mute" style="margin-bottom:12px">${a.length} Anträge, davon ${neu} neu. Nach dem Übertragen in die Mitgliederverwaltung auf „angenommen“ setzen.</p>
-      ${a.length ? `<div class="tablewrap"><table><thead><tr><th>Eingang</th><th>Name</th><th>Ort</th><th>E-Mail</th><th>Beitrag</th><th>IBAN</th><th>Status</th></tr></thead><tbody>
+      ${a.length ? `<div class="tablewrap"><table><thead><tr><th>Eingang</th><th>Name</th><th>Ort</th><th>E-Mail</th><th>Beitrag</th><th>Newsletter</th><th>IBAN</th><th>Status</th></tr></thead><tbody>
         ${a.map(x => `<tr><td class="tnum">${new Date(x.erstellt).toLocaleDateString("de-DE")}</td><td>${esc(x.vorname)} ${esc(x.nachname)}${x.kind ? `<br><span class="mute small">${esc(x.kind)}</span>` : ""}</td>
-          <td>${esc(x.plz)} ${esc(x.ort)}</td><td>${esc(x.email)}</td><td class="tnum">${euro(+x.beitrag)}</td><td class="tnum">${esc(String(x.iban).replace(/(.{4})/g, "$1 "))}</td>
+          <td>${esc(x.plz)} ${esc(x.ort)}</td><td>${esc(x.email)}</td><td class="tnum">${euro(+x.beitrag)}</td><td>${x.newsletter ? "ja" : "–"}</td><td class="tnum">${esc(String(x.iban).replace(/(.{4})/g, "$1 "))}</td>
           <td><select data-st="${esc(x.id)}" aria-label="Status">${["neu", "angenommen", "abgelehnt"].map(s => `<option ${s === x.status ? "selected" : ""}>${s}</option>`).join("")}</select></td></tr>`).join("")}
       </tbody></table></div>` : `<div class="card"><p class="mute">Noch keine Anträge eingegangen.</p></div>`}`;
     $$("[data-st]", box).forEach(s => s.onchange = async () => { try { await D.antragStatus(s.dataset.st, s.value); toast("Status gespeichert"); } catch (e) { toast(e.message); } });
     const cb = $("#csvBtn"); if (cb) cb.onclick = () => {
-      const cols = ["erstellt", "vorname", "nachname", "strasse", "plz", "ort", "email", "telefon", "kind", "beitrag", "kontoinhaber", "iban", "status"];
+      const cols = ["erstellt", "vorname", "nachname", "strasse", "plz", "ort", "email", "telefon", "kind", "beitrag", "newsletter", "kontoinhaber", "iban", "status"];
       const csv = "﻿" + [cols.join(";"), ...a.map(x => cols.map(c => '"' + String(x[c] ?? "").replace(/"/g, '""') + '"').join(";"))].join("\r\n");
       const l = document.createElement("a"); l.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
       l.download = "mitgliedsantraege_" + new Date().toISOString().slice(0, 10) + ".csv"; l.click();

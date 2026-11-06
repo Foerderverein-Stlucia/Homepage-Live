@@ -3,11 +3,11 @@
    Hier werden Texte, Projekte und Termine gepflegt.
    Alles, was mit "BEISPIEL" markiert ist, bitte ersetzen.
    Farben: pink, blue, green, orange, purple, yellow, red, teal
-   Symbole: rutsche, buch, theater, musik, baum, kueche, ausflug, stern, herz
+   Symbole: rutsche, buch, theater, musik, baum, kueche, ausflug, stern, herz, wasser, reck, steine, wippe, luft
    ============================================================ */
 window.FV_INHALT = {
   verein: {
-    name: "Förderverein der Kath. Kita St. Lucia Walbeck e.V.",
+    name: "Förderverein der kath. KiTa St. Lucia Walbeck e.V.",
     kurzname: "Förderverein St. Lucia",
     ort: "Walbeck",
     kita: "Kath. Kindertageseinrichtung St. Lucia",
@@ -19,39 +19,44 @@ window.FV_INHALT = {
       { rolle: "Kassiererin", name: "Name folgt" },
       { rolle: "Schriftführer", name: "Name folgt" }
     ],
-    beitraege: [12, 24, 36],           // Jahresbeiträge in Euro zur Auswahl
+    beitraege: [12, 24, 48],           // Beiträge in Euro pro Kindergartenjahr (wie Flyer)
+    beitragZeitraum: "pro Kindergartenjahr",
     mindestbeitrag: 12,
-    glaeubigerId: "DE00ZZZ00000000000",  // BEISPIEL – Gläubiger-ID der Bundesbank
-    bank: { inhaber: "Förderverein Kita St. Lucia Walbeck e.V.", iban: "DE00 0000 0000 0000 0000 00", bic: "XXXXDEXXXXX", institut: "Bank folgt" },
-    kontakt: { email: "kontakt@beispiel.de", adresse: "c/o Kath. Kita St. Lucia · Meusweg 12 · 47608 Geldern-Walbeck" },
+    glaeubigerId: "",                  // Gläubiger-ID der Bundesbank eintragen, sobald bekannt (wird sonst ausgeblendet)
+    bank: { inhaber: "Förderverein der kath. KiTa St. Lucia Walbeck e.V.", iban: "DE89 3206 1384 2006 2290 10", bic: "GENODED1GDL", institut: "Volksbank an der Niers eG" },
+    kontakt: { email: "foerderverein.stlucia.kiga@gmail.com", adresse: "Meusweg 12 · 47608 Geldern" },
+    papierAntrag: "Die ausgefüllte Beitrittserklärung auf Papier könnt ihr in die verschlossene Briefbox des Fördervereins im Eingangsbereich des Kindergartens einwerfen.",
+    zitat: ["Kinder sind nicht nur unsere Zukunft.", "Kinder sind ein Schatz, den es zu hüten, zu unterstützen und zu fördern gilt."],
     kitaInfo: {
       adresse: "Meusweg 12, 47608 Geldern-Walbeck",
       text: "Die Kita St. Lucia gehört zur Pfarrei St. Maria Magdalena Geldern. In zwei Gruppen für Kinder von 3 bis 6 Jahren und einer Gruppe für Kinder von 2 bis 4 Jahren gibt es bis zu 70 Plätze.",
       link: "https://www.st-mariamagdalena-geldern.de"
     },
     registergericht: "Registergericht und Nummer folgen",
-    gemeinnuetzig: true
+    gemeinnuetzig: null              // true, sobald die Gemeinnützigkeit bestätigt ist
   },
 
+  // Projekte aus dem Flyer 2026. Jahr und Betrag ergänzen, sobald bekannt (leer = wird nicht angezeigt).
+  // Fotos von Kindern nur mit schriftlicher Einwilligung der Eltern veröffentlichen.
   projekte: [
-    { id: "garten", titel: "Neue Spielgeräte im Außengelände", jahr: 2025, betrag: 4800, farbe: "pink", symbol: "rutsche",
-      kurz: "Kletterturm mit Rutsche und ein überdachter Sandspielbereich.",
-      text: ["Das alte Klettergerüst war nicht mehr sicher und musste abgebaut werden. Mit Spenden vom Sommerfest und vielen Einzelspenden konnten wir einen neuen Kletterturm mit Rutsche finanzieren.",
-             "Dazu kam ein Sonnensegel über dem Sandkasten, damit die Kinder auch im Hochsommer draußen spielen können."],
-      partner: "Eltern und Sommerfest", beispiel: true },
-    { id: "buecherei", titel: "Kita-Bücherei und Leseecke", jahr: 2024, betrag: 1200, farbe: "blue", symbol: "buch",
-      kurz: "Über 120 neue Bilderbücher und eine gemütliche Leseecke.",
-      text: ["Jede Woche dürfen sich die Kinder ein Buch mit nach Hause nehmen. Dafür haben wir den Bestand aufgefrischt und ein Regal mit Sitzkissen angeschafft.",
-             "Vorlese-Omas und -Opas aus Walbeck kommen jetzt regelmäßig donnerstags."],
-      partner: "", beispiel: true },
-    { id: "theater", titel: "Theaterworkshop für die Maxi-Kinder", jahr: 2024, betrag: 900, farbe: "orange", symbol: "theater",
-      kurz: "Drei Vormittage mit einer Theaterpädagogin und eine Aufführung für die Familien.",
-      text: ["Die Vorschulkinder haben mit einer Theaterpädagogin ein eigenes Stück entwickelt und es beim Abschlussfest aufgeführt."],
-      partner: "", beispiel: true },
-    { id: "kueche", titel: "Kinderküche", jahr: 2023, betrag: 650, farbe: "green", symbol: "kueche",
-      kurz: "Eine Küchenzeile in Kinderhöhe für Back- und Kochprojekte.",
-      text: ["Seitdem backen die Gruppen regelmäßig selbst, zum Beispiel Weckmänner für St. Martin."],
-      partner: "", beispiel: true }
+    { id: "wasserspiel", titel: "Wasser- und Matschanlage", jahr: null, betrag: null, farbe: "blue", symbol: "wasser", bild: "img/projekte/wasserspiel.jpg",
+      kurz: "Rinnen, Schleusen und eine Pumpe im Sandbereich zum Bauen, Stauen und Matschen.",
+      text: ["Mit der Wasser- und Matschanlage können die Kinder Wasser pumpen, durch Rinnen leiten und mit Schiebern stauen. Dabei wird gebaut, ausprobiert und gemeinsam getüftelt."], partner: "" },
+    { id: "turnreck", titel: "Turnreck im Außengelände", jahr: null, betrag: null, farbe: "red", symbol: "reck", bild: "img/projekte/aussengelaende.jpg",
+      kurz: "Reckstangen in verschiedenen Höhen zum Hangeln, Schwingen und Turnen.",
+      text: ["Die Reckstangen im Außengelände laden zum Hangeln, Schwingen und Klettern ein und stärken Kraft und Geschicklichkeit."], partner: "" },
+    { id: "weidentipis", titel: "Weidentipis im Garten", jahr: null, betrag: null, farbe: "green", symbol: "baum",
+      kurz: "Geflochtene Weidenhäuser als Rückzugsort und Spielhöhle.",
+      text: ["Die Weidentipis sind kleine Höhlen im Garten: zum Verstecken, Ausruhen und für Rollenspiele."], partner: "" },
+    { id: "stapelsteine", titel: "Stapel- und Balanciersteine", jahr: null, betrag: null, farbe: "purple", symbol: "steine",
+      kurz: "Bunte Steine zum Stapeln, Bauen und Balancieren für drinnen.",
+      text: ["Die Steine lassen sich zu Türmen stapeln oder als Balancierpfad auslegen. Das fördert Gleichgewicht, Körpergefühl und Fantasie."], partner: "" },
+    { id: "wipptier", titel: "Federwippe für die Kleinen", jahr: null, betrag: null, farbe: "orange", symbol: "wippe",
+      kurz: "Ein Wippfahrzeug auf Feder für das Außengelände.",
+      text: ["Die Federwippe ist besonders bei den jüngeren Kindern beliebt und trainiert spielerisch das Gleichgewicht."], partner: "" },
+    { id: "luftreiniger", titel: "Luftreiniger für die Gruppenräume", jahr: null, betrag: null, farbe: "teal", symbol: "luft",
+      kurz: "Mobile Luftreiniger für bessere Luft in den Räumen.",
+      text: ["Die Luftreiniger filtern Staub und Keime aus der Raumluft und sorgen für ein gesünderes Klima in den Gruppen."], partner: "" }
   ],
 
   // Datum als JJJJ-MM-TT. "liste" verknüpft einen Termin mit einer Eintrageliste (ID aus der Verwaltung).
