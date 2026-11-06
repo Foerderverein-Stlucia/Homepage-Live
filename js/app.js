@@ -163,7 +163,7 @@
       ${MEHR.filter(m => m.id !== "galerie" || (I.galerie || []).length).map(m => `<a href="#${m.id}" data-zu style="--dot:var(--${m.f})"><span class="d"></span><span>${m.t}<small>${m.s}</small></span></a>`).join("")}
       <hr>
       ${installierbar() && installEvt ? `<button id="instBtn"><span class="d" style="--dot:var(--green)"></span><span>App installieren<small>Auf den Startbildschirm legen</small></span></button>` : ""}
-      ${!PREVIEW && !standalone() ? `<button id="instHilfe"><span class="d" style="--dot:var(--green)"></span><span>App aufs Handy holen<small>Kurze Anleitung für iPhone und Android</small></span></button>` : ""}
+      ${!PREVIEW ? `<button id="instHilfe"><span class="d" style="--dot:var(--green)"></span><span>App aufs Handy holen<small>Kurze Anleitung für iPhone und Android</small></span></button>` : ""}
       <button id="themeBtn"><span class="d" style="--dot:var(--ink)"></span><span>Darstellung: ${theme === "dark" ? "dunkel" : theme === "light" ? "hell" : "wie Gerät"}<small>Antippen zum Wechseln</small></span></button>
       <a href="#impressum" data-zu><span class="d" style="--dot:var(--line)"></span>Impressum</a>
       <a href="#datenschutz" data-zu><span class="d" style="--dot:var(--line)"></span>Datenschutz</a>
