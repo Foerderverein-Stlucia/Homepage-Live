@@ -84,6 +84,7 @@ Voraussetzung: `supabase/erweiterung-verwaltung.sql` einmal im SQL-Editor ausfü
 - **Checkliste**: wiederkehrende Vorstandsaufgaben, nur für den Vorstand sichtbar, beginnt jedes Jahr neu.
 - **Zuwendungsbestätigung**: erst Angaben aus dem Freistellungsbescheid unter Vereinsdaten → Rechtliches eintragen, dann im Mitglied „Bestätigung drucken“. Text vor der Nutzung mit Finanzamt oder Steuerberater abgleichen.
 - **Kalender**: Termine und eigene Helferdienste lassen sich als .ics in den Handykalender legen.
+- **Statistik**: anonyme Seitenaufrufe pro Tag und Seite, Handy/Computer, App/Browser. Keine Cookies, keine Kennung, keine Personendaten. Datenbank: `supabase/erweiterung-statistik.sql`.
 - Datenbank: `supabase/erweiterung-inhalte.sql` (bereits eingespielt).
 
 ## 5. Änderungen am Programm veröffentlichen

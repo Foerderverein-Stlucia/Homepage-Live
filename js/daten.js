@@ -41,6 +41,11 @@
   }
   const demoSave = (db) => store.set("demo", db);
 
+  function statAus(z, tage) {
+    const von = new Date(); von.setDate(von.getDate() - tage + 1); const v = von.toISOString().slice(0, 10);
+    const r = z.filter(x => x.tag >= v), sum = (k, f) => { const m = new Map(); r.forEach(x => m.set(f(x), (m.get(f(x)) || 0) + x.anzahl)); return [...m].map(([a, anzahl]) => ({ ...k(a), anzahl })); };
+    return { tage: sum(a => ({ tag: a }), x => x.tag).sort((a, b) => a.tag.localeCompare(b.tag)), seiten: sum(a => ({ seite: a }), x => x.seite).sort((a, b) => b.anzahl - a.anzahl), geraete: sum(a => ({ geraet: a }), x => x.geraet), app: sum(a => ({ app: a }), x => x.app) };
+  }
   const Demo = {
     async listen({ alle = false } = {}) {
       const db = demoDb();
@@ -99,6 +104,8 @@
     async inhalteLaden() { return store.get("inhalte", null); },
     async inhaltSpeichern(k, wert) { const x = store.get("inhalte", {}) || {}; x[k] = wert; store.set("inhalte", x); },
     async inhaltLesen(k) { const x = store.get("inhalte", {}) || {}; return x[k] ?? null; },
+    async aufruf(seite, geraet, app) { const z = store.get("stat", []) || []; const tag = new Date().toISOString().slice(0, 10); let e = z.find(r => r.tag === tag && r.seite === seite && r.geraet === geraet && r.app === app); if (!e) z.push(e = { tag, seite, geraet, app, anzahl: 0 }); e.anzahl++; store.set("stat", z); },
+    async statistik(tage) { return statAus(store.get("stat", []) || [], tage); },
     async bildHochladen(blob) {
       return await new Promise((ok, bad) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = bad; r.readAsDataURL(blob); });
     },
@@ -230,6 +237,10 @@
       } catch (e) { return store.get("inhalteCache", null); }
       finally { clearTimeout(t); }
     },
+    async aufruf(seite, geraet, app) {
+      try { await fetch(base + "/rest/v1/rpc/aufruf", { method: "POST", keepalive: true, headers: { apikey: C.supabaseKey, "Content-Type": "application/json" }, body: JSON.stringify({ p_seite: seite, p_geraet: geraet, p_app: app }) }); } catch (e) {}
+    },
+    async statistik(tage) { return await req("/rest/v1/rpc/statistik", { method: "POST", body: { p_tage: tage }, auth: true }); },
     async inhaltLesen(k) {
       const r = await req("/rest/v1/inhalte?select=wert&schluessel=eq." + encodeURIComponent(k), { auth: true });
       return r && r[0] ? r[0].wert : null;

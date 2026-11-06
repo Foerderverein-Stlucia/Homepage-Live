@@ -14,7 +14,7 @@
   const PREVIEW = !!window.FV_PREVIEW;
   const FARBEN = [["pink", "Pink"], ["blue", "Blau"], ["green", "Grün"], ["orange", "Orange"], ["purple", "Lila"], ["yellow", "Gelb"], ["red", "Rot"], ["teal", "Petrol"]];
   const SYMBOLE = [["stern", "Stern"], ["rutsche", "Rutsche"], ["wasser", "Wasser"], ["reck", "Turnen"], ["baum", "Baum/Garten"], ["steine", "Steine"], ["wippe", "Wippe"], ["luft", "Luft"], ["buch", "Buch"], ["theater", "Theater"], ["musik", "Musik"], ["kueche", "Küche"], ["ausflug", "Ausflug"], ["herz", "Herz"]];
-  const TABS = [["uebersicht", "Übersicht"], ["antraege", "Anträge"], ["mitglieder", "Mitglieder"], ["listen", "Eintragelisten"], ["termine", "Termine"], ["neuigkeiten", "Neuigkeiten"], ["projekte", "Projekte"], ["galerie", "Galerie"], ["aufgaben", "Checkliste"], ["verein", "Vereinsdaten"], ["zugaenge", "Zugänge"]];
+  const TABS = [["uebersicht", "Übersicht"], ["antraege", "Anträge"], ["mitglieder", "Mitglieder"], ["listen", "Eintragelisten"], ["termine", "Termine"], ["neuigkeiten", "Neuigkeiten"], ["projekte", "Projekte"], ["galerie", "Galerie"], ["aufgaben", "Checkliste"], ["statistik", "Statistik"], ["verein", "Vereinsdaten"], ["zugaenge", "Zugänge"]];
   let tab = "uebersicht";
 
   /* ---------- kleine Helfer ---------- */
@@ -808,6 +808,33 @@
     };
     $("#aNeu", box).onclick = () => editor(null);
     $$("[data-ed]", box).forEach(b => b.onclick = () => editor(arr.find(x => x.id === b.dataset.ed)));
+  };
+
+  /* ---------- Statistik ---------- */
+  const SEITENNAMEN = { start: "Startseite", termine: "Termine", mithelfen: "Mithelfen (Übersicht)", projekte: "Projekte", verein: "Über den Verein", spenden: "Spenden", kontakt: "Kontakt", mitglied: "Mitglied werden", "mitglied-firma": "Mitglied werden (Firma)", galerie: "Eindrücke", impressum: "Impressum", datenschutz: "Datenschutz" };
+  const seitenName = (z) => SEITENNAMEN[z] || (z.startsWith("liste-") ? "Liste: " + z.slice(6) : z.startsWith("projekt-") ? "Projekt: " + z.slice(8) : z.startsWith("aushang-") ? "Aushang: " + z.slice(8) : z);
+  let statTage = 30;
+  TAB.statistik = async (box) => {
+    const d = await D.statistik(statTage);
+    const summe = (a) => a.reduce((s, x) => s + x.anzahl, 0);
+    const gesamt = summe(d.tage), handy = summe(d.geraete.filter(x => x.geraet === "handy")), inApp = summe(d.app.filter(x => x.app));
+    const proz = (n) => gesamt ? Math.round(n / gesamt * 100) + " %" : "–";
+    // alle Tage im Zeitraum, auch ohne Aufrufe
+    const tage = []; for (let i = statTage - 1; i >= 0; i--) { const t = new Date(); t.setDate(t.getDate() - i); tage.push(t.toISOString().slice(0, 10)); }
+    const map = new Map(d.tage.map(x => [x.tag, x.anzahl])); const max = Math.max(1, ...tage.map(t => map.get(t) || 0));
+    box.innerHTML = `<div class="row" style="justify-content:space-between;margin-bottom:8px"><h1 style="font-size:1.6rem">Statistik</h1>
+        <select id="stTage" aria-label="Zeitraum">${[[7, "7 Tage"], [30, "30 Tage"], [90, "90 Tage"], [365, "1 Jahr"]].map(([v, t]) => `<option value="${v}" ${v === statTage ? "selected" : ""}>${t}</option>`).join("")}</select></div>
+      <p class="mute small" style="margin-bottom:12px">Gezählt werden Seitenaufrufe, nicht einzelne Personen. Eure eigenen Aufrufe im angemeldeten Zustand und Suchmaschinen-Roboter zählen nicht mit. Es werden keine Cookies und keine Kennungen verwendet.</p>
+      <div class="grid2">
+        <div class="card" style="--dot:var(--blue)"><div style="font:800 2rem var(--head,inherit)" class="tnum">${gesamt}</div><b>Aufrufe</b><div class="mute small">ca. ${(gesamt / statTage).toFixed(1).replace(".", ",")} pro Tag</div></div>
+        <div class="card" style="--dot:var(--green)"><div style="font:800 2rem var(--head,inherit)" class="tnum">${proz(handy)}</div><b>am Handy</b><div class="mute small">${proz(inApp)} über die installierte App</div></div>
+      </div>
+      <div class="card stack" style="--gap:8px;margin-top:12px"><h2>Aufrufe pro Tag</h2>
+        <div role="img" aria-label="Säulendiagramm der Aufrufe pro Tag" style="display:flex;align-items:flex-end;gap:2px;height:120px">${tage.map(t => { const n = map.get(t) || 0; return `<div title="${datumKurzV(t)}: ${n}" style="flex:1;min-width:2px;height:${Math.max(n ? 4 : 1, Math.round(n / max * 100))}%;background:var(--${n ? "blue" : "line"});border-radius:3px 3px 0 0"></div>`; }).join("")}</div>
+        <div class="row mute small" style="justify-content:space-between"><span>${datumKurzV(tage[0])}</span><span>Spitze: ${d.tage.length ? max : 0} pro Tag</span><span>${datumKurzV(tage[tage.length - 1])}</span></div></div>
+      <div class="card stack" style="--gap:6px;margin-top:12px"><h2>Beliebteste Seiten</h2>
+        ${d.seiten.length ? `<div class="tablewrap"><table><tbody>${d.seiten.slice(0, 15).map(x => `<tr><td>${esc(seitenName(x.seite))}</td><td class="tnum" style="text-align:right">${x.anzahl}</td><td style="width:35%"><div style="height:8px;border-radius:4px;background:var(--blue);width:${Math.round(x.anzahl / d.seiten[0].anzahl * 100)}%"></div></td></tr>`).join("")}</tbody></table></div>` : `<p class="mute">Noch keine Daten. Die Zählung beginnt mit dem ersten Aufruf der veröffentlichten Seite.</p>`}</div>`;
+    $("#stTage", box).onchange = (e) => { statTage = +e.target.value; TAB.statistik(box); };
   };
 
   /* ---------- Spendenbescheinigung ---------- */

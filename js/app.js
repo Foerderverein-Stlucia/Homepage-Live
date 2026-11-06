@@ -203,6 +203,15 @@
   /* ---------- Router ---------- */
   const aktuell = () => decodeURIComponent(location.hash.slice(1)) || "start";
   const SEITEN = {};
+  /* Anonymer Seitenzähler: nur Seite, Gerätetyp und App/Browser, keine Cookies, keine Kennung, keine IP-Speicherung */
+  let zuletztGezaehlt = "";
+  function zaehlen(h, name, arg) {
+    if (PREVIEW || !D.aufruf || zuletztGezaehlt === h) return;
+    if (["verwaltung", "registrieren", "nichtgefunden"].includes(name) || D.angemeldet() || navigator.webdriver || /bot|crawl|spider|preview/i.test(navigator.userAgent)) return;
+    zuletztGezaehlt = h;
+    const seite = (["projekt", "liste", "aushang"].includes(name) ? name + "-" + arg : h).toLowerCase().replace(/[^a-z0-9-]+/g, "-").replace(/^-|-$/g, "").slice(0, 40) || "start";
+    D.aufruf(seite, matchMedia("(pointer:coarse)").matches ? "handy" : "computer", !!standalone());
+  }
   async function render() {
     const h = aktuell();
     const [name, ...rest] = h.split("-");
@@ -215,6 +224,7 @@
     if (["liste", "aushang"].includes(name)) $$(`[data-nav="mithelfen"]`).forEach(a => a.setAttribute("aria-current", "page"));
     const view = $("#view");
     try { await fn(view, arg); } catch (e) { console.error(e); view.innerHTML = `<div class="card"><h2>Das hat nicht geklappt</h2><p class="mute">${esc(e.message)}</p><p style="margin-top:12px"><button class="btn" onclick="location.reload()">Neu laden</button></p></div>`; }
+    zaehlen(h, name, arg);
     const titel = $("h1", view); document.title = (titel ? titel.textContent + " · " : "") + "Förderverein St. Lucia";
   }
   window.addEventListener("hashchange", () => { render(); window.scrollTo(0, 0); $("#inhalt").focus({ preventScroll: true }); });
@@ -510,7 +520,7 @@
       <li><b>Eintragelisten:</b> Name und freiwillig eine Kontaktmöglichkeit. Öffentlich sichtbar ist nur der Vorname mit Anfangsbuchstaben des Nachnamens. Löschung nach der Veranstaltung.</li>
       <li><b>Auf eurem Gerät</b> speichert die App, für welche Plätze ihr euch eingetragen habt, damit ihr euch wieder austragen könnt. Das bleibt auf eurem Gerät.</li></ul>
       <h3>Hosting und Datenbank</h3><p>[Hoster und Datenbankanbieter mit Serverstandort eintragen, z. B. Supabase, Region Frankfurt. Mit beiden einen Vertrag zur Auftragsverarbeitung abschließen.]</p>
-      <h3>Keine Tracker</h3><p>Die Seite nutzt keine Analyse-Werkzeuge, keine Cookies zu Werbezwecken und lädt keine Schriften oder Skripte von fremden Servern.</p>
+      <h3>Keine Tracker, anonyme Zählung</h3><p>Die Seite nutzt keine Analyse-Werkzeuge von Dritten, keine Cookies und lädt keine Schriften oder Skripte von fremden Servern. Um zu sehen, ob die Seite genutzt wird, zählen wir auf unserem eigenen Server nur, wie oft welche Seite aufgerufen wurde, getrennt nach Handy oder Computer und App oder Browser. Dabei wird keine Kennung gesetzt und nichts auf eurem Gerät gespeichert, und die Zahlen lassen sich keiner Person zuordnen (Art. 6 Abs. 1 lit. f DSGVO, Interesse am Betrieb und an der Verbesserung der Seite). Ausgeloggte Aufrufe von Vorstandsmitgliedern zählen mit.</p>
       <h3>Eure Rechte</h3><p>Ihr habt das Recht auf Auskunft, Berichtigung, Löschung, Einschränkung und Widerspruch sowie auf Beschwerde bei der Landesbeauftragten für Datenschutz NRW.</p>
       <p class="mute small">Vorlage – vor Veröffentlichung prüfen lassen.</p></div>`;
   };
