@@ -95,7 +95,35 @@
       db.eintraege = db.eintraege.filter(e => !ids.includes(e.platz_id));
       db.listen = db.listen.filter(x => x.id !== id); demoSave(db);
     },
-    zuruecksetzen() { try { localStorage.removeItem("fv_demo"); localStorage.removeItem("fv_meine"); } catch (e) {} }
+    /* Inhalte, Bilder, Mitglieder, Zugänge (Demo) */
+    async inhalteLaden() { return store.get("inhalte", null); },
+    async inhaltSpeichern(k, wert) { const x = store.get("inhalte", {}) || {}; x[k] = wert; store.set("inhalte", x); },
+    async bildHochladen(blob) {
+      return await new Promise((ok, bad) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = bad; r.readAsDataURL(blob); });
+    },
+    async mitglieder() { return (store.get("mitglieder", []) || []).slice().sort((a, b) => (a.nachname + a.vorname).localeCompare(b.nachname + b.vorname, "de")); },
+    async mitgliedSpeichern(m) {
+      const a = store.get("mitglieder", []) || []; const jetzt = new Date().toISOString();
+      if (m.id) { const i = a.findIndex(x => x.id === m.id); if (i >= 0) a[i] = { ...a[i], ...m, geaendert: jetzt }; }
+      else a.push({ status: "aktiv", newsletter: false, ...m, id: uid(), erstellt: jetzt, geaendert: jetzt });
+      store.set("mitglieder", a);
+    },
+    async mitgliederImport(liste) { const a = store.get("mitglieder", []) || []; const jetzt = new Date().toISOString(); liste.forEach(m => a.push({ status: "aktiv", newsletter: false, ...m, id: uid(), erstellt: jetzt, geaendert: jetzt })); store.set("mitglieder", a); return liste.length; },
+    async mitgliedLoeschen(id) { store.set("mitglieder", (store.get("mitglieder", []) || []).filter(x => x.id !== id)); },
+    async vorstandListe() { const s = store.get("sitzung", {}) || {}; return [{ user_id: "demo", name: "Demo-Vorstand", amt: "1. Vorsitz", email: s.email || "vorstand@beispiel.de", ich: true }].concat(store.get("demoVorstand", []) || []); },
+    async registrieren(name, email, pw) { const a = store.get("demoAnfragen", []) || []; if (a.some(x => x.email.toLowerCase() === email.toLowerCase())) throw new Error("Mit dieser E-Mail gibt es schon eine Anfrage."); a.push({ user_id: uid(), name, email, erstellt: new Date().toISOString() }); store.set("demoAnfragen", a); },
+    async zugangAnfragen() { return store.get("demoAnfragen", []) || []; },
+    async zugangFreischalten(id, name, amt) {
+      const a = store.get("demoAnfragen", []) || []; const x = a.find(y => y.user_id === id);
+      const v = store.get("demoVorstand", []) || []; const i = v.findIndex(y => y.user_id === id);
+      if (i >= 0) { v[i].name = name; v[i].amt = amt; } else v.push({ user_id: id, name, amt, email: x ? x.email : "", ich: false });
+      store.set("demoVorstand", v); store.set("demoAnfragen", a.filter(y => y.user_id !== id));
+    },
+    async zugangAblehnen(id) { store.set("demoAnfragen", (store.get("demoAnfragen", []) || []).filter(y => y.user_id !== id)); },
+    async vorstandHinzufuegen(email, name) { const a = store.get("demoVorstand", []) || []; a.push({ user_id: uid(), name, email, ich: false }); store.set("demoVorstand", a); },
+    async vorstandEntfernen(id) { store.set("demoVorstand", (store.get("demoVorstand", []) || []).filter(x => x.user_id !== id)); },
+    async passwortAendern() { throw new Error("Im Vorschau-Modus gibt es kein echtes Passwort."); },
+    zuruecksetzen() { try { ["fv_demo", "fv_meine", "fv_inhalte", "fv_mitglieder", "fv_demoVorstand", "fv_demoAnfragen"].forEach(k => localStorage.removeItem(k)); } catch (e) {} }
   };
 
   /* ---------------- Supabase (ohne Bibliothek, per REST) ---------------- */
@@ -123,6 +151,10 @@
     if (/VOLL/.test(m)) return "Dieser Platz ist inzwischen voll.";
     if (/GESCHLOSSEN/.test(m)) return "Diese Liste ist nicht mehr offen.";
     if (/Invalid login/i.test(m)) return "E-Mail oder Passwort stimmt nicht.";
+    if (/KEIN_KONTO/.test(m)) return "Zu dieser E-Mail gibt es noch kein Konto. Bitte zuerst in Supabase anlegen (siehe Hinweis).";
+    if (/SELBST/.test(m)) return "Den eigenen Zugang kann man nicht entfernen.";
+    if (/IST_VORSTAND/.test(m)) return "Dieser Zugang ist schon freigeschaltet. Erst entfernen, dann ablehnen.";
+    if (/inhalte|mitglieder|vorstand_liste|zugang_/.test(m) && /(does not exist|Could not find)/i.test(m)) return "Die Datenbank-Erweiterung fehlt noch. Bitte supabase/erweiterung-verwaltung.sql einmal im SQL-Editor ausführen.";
     return m;
   }
   async function erneuern() {
@@ -157,7 +189,7 @@
       if (!r.ok) throw new Error(fehlerText(j.error_description || j.msg || "") || "Anmeldung fehlgeschlagen.");
       store.set("sitzung", { access_token: j.access_token, refresh_token: j.refresh_token, email });
       const ok = await req("/rest/v1/rpc/ist_vorstand", { method: "POST", body: {}, auth: true });
-      if (!ok) { store.set("sitzung", null); throw new Error("Dieses Konto ist nicht als Vorstand freigeschaltet."); }
+      if (!ok) { store.set("sitzung", null); throw new Error("Dein Zugang ist noch nicht freigeschaltet. Ein Vorstandsmitglied muss ihn erst in der Verwaltung bestätigen."); }
     },
     async abmelden() { store.set("sitzung", null); },
     angemeldet() { const s = sitzung(); return !!(s && s.access_token); },
@@ -176,6 +208,65 @@
       return r;
     },
     async listeLoeschen(id) { await req("/rest/v1/listen?id=eq." + id, { method: "DELETE", auth: true }); },
+    /* Inhalte, Bilder, Mitglieder, Zugänge (Supabase) */
+    async inhalteLaden() {
+      const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), 5000);
+      try {
+        const r = await fetch(base + "/rest/v1/inhalte?select=schluessel,wert", { headers: { apikey: C.supabaseKey }, signal: ctl.signal });
+        if (!r.ok) throw new Error(r.status);
+        const rows = await r.json(); const x = {}; rows.forEach(z => x[z.schluessel] = z.wert);
+        store.set("inhalteCache", x); return x;
+      } catch (e) { return store.get("inhalteCache", null); }
+      finally { clearTimeout(t); }
+    },
+    async inhaltSpeichern(k, wert) {
+      await req("/rest/v1/inhalte?on_conflict=schluessel", { method: "POST", auth: true, body: { schluessel: k, wert, geaendert: new Date().toISOString() }, prefer: "resolution=merge-duplicates,return=minimal" });
+      const c = store.get("inhalteCache", {}) || {}; c[k] = wert; store.set("inhalteCache", c);
+    },
+    async bildHochladen(blob, name) {
+      const s = sitzung(); if (!s || !s.access_token) throw new Error("Bitte erneut anmelden.");
+      const pfad = "projekte/" + Date.now() + "-" + String(name || "bild").toLowerCase().replace(/[^a-z0-9.-]+/g, "-").slice(0, 40) + ".jpg";
+      const send = () => fetch(base + "/storage/v1/object/bilder/" + pfad, { method: "POST", headers: { apikey: C.supabaseKey, Authorization: "Bearer " + sitzung().access_token, "Content-Type": blob.type || "image/jpeg", "x-upsert": "true" }, body: blob });
+      let r = await send();
+      if (r.status === 401 || r.status === 403) { try { await erneuern(); r = await send(); } catch (e) {} }
+      if (!r.ok) { let m = ""; try { m = (await r.json()).message || ""; } catch (e) {} throw new Error("Bild konnte nicht hochgeladen werden" + (m ? ": " + m : ".") ); }
+      return base + "/storage/v1/object/public/bilder/" + pfad;
+    },
+    async mitglieder() { return await req("/rest/v1/mitglieder?select=*&order=nachname.asc,vorname.asc", { auth: true }); },
+    async mitgliedSpeichern(m) {
+      const { id, erstellt, ...rest } = m; rest.geaendert = new Date().toISOString();
+      ["beitrag"].forEach(k => { if (rest[k] === "" || rest[k] == null || isNaN(rest[k])) rest[k] = null; });
+      ["eintritt", "austritt"].forEach(k => { if (!rest[k]) rest[k] = null; });
+      if (id) await req("/rest/v1/mitglieder?id=eq." + id, { method: "PATCH", auth: true, body: rest, prefer: "return=minimal" });
+      else await req("/rest/v1/mitglieder", { method: "POST", auth: true, body: rest, prefer: "return=minimal" });
+    },
+    async mitgliederImport(liste) {
+      for (let i = 0; i < liste.length; i += 200) await req("/rest/v1/mitglieder", { method: "POST", auth: true, body: liste.slice(i, i + 200), prefer: "return=minimal" });
+      return liste.length;
+    },
+    async mitgliedLoeschen(id) { await req("/rest/v1/mitglieder?id=eq." + id, { method: "DELETE", auth: true }); },
+    async vorstandListe() { return await req("/rest/v1/rpc/vorstand_liste", { method: "POST", body: {}, auth: true }); },
+    async registrieren(name, email, pw) {
+      const r = await fetch(base + "/auth/v1/signup", { method: "POST", headers: { apikey: C.supabaseKey, "Content-Type": "application/json" }, body: JSON.stringify({ email, password: pw, data: { name } }) });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        const m = j.msg || j.message || j.error_description || "";
+        if (/already|registered|exists/i.test(m)) throw new Error("Mit dieser E-Mail gibt es schon einen Zugang oder eine Anfrage.");
+        if (/not allowed|disabled/i.test(m)) throw new Error("Neue Zugänge sind gerade abgeschaltet. Bitte beim Vorstand melden.");
+        if (/password/i.test(m)) throw new Error("Das Passwort ist zu kurz oder zu einfach.");
+        if (/rate|too many/i.test(m)) throw new Error("Zu viele Versuche. Bitte in einer Stunde noch einmal.");
+        throw new Error("Die Anfrage hat nicht geklappt." + (m ? " (" + m + ")" : ""));
+      }
+    },
+    async zugangAnfragen() { return await req("/rest/v1/rpc/zugang_anfragen", { method: "POST", body: {}, auth: true }); },
+    async zugangFreischalten(id, name, amt) { await req("/rest/v1/rpc/zugang_freischalten", { method: "POST", body: { p_user: id, p_name: name, p_amt: amt }, auth: true }); },
+    async zugangAblehnen(id) { await req("/rest/v1/rpc/zugang_ablehnen", { method: "POST", body: { p_user: id }, auth: true }); },
+    async vorstandHinzufuegen(email, name) { await req("/rest/v1/rpc/vorstand_hinzufuegen", { method: "POST", body: { p_email: email, p_name: name }, auth: true }); },
+    async vorstandEntfernen(id) { await req("/rest/v1/rpc/vorstand_entfernen", { method: "POST", body: { p_user: id }, auth: true }); },
+    async passwortAendern(pw) {
+      const s = sitzung(); const r = await fetch(base + "/auth/v1/user", { method: "PUT", headers: { apikey: C.supabaseKey, Authorization: "Bearer " + s.access_token, "Content-Type": "application/json" }, body: JSON.stringify({ password: pw }) });
+      if (!r.ok) { let m = ""; try { const j = await r.json(); m = j.msg || j.message || ""; } catch (e) {} throw new Error(/weak|short|least/i.test(m) ? "Das Passwort ist zu kurz oder zu einfach." : "Passwort konnte nicht geändert werden." + (m ? " (" + m + ")" : "")); }
+    },
     zuruecksetzen() {}
   };
 

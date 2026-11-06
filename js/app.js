@@ -10,7 +10,7 @@
   const C = window.FV_CONFIG || {};
   const I = window.FV_INHALT;
   const D = window.FV_DATEN;
-  const V = I.verein;
+  let V = I.verein;
   const PREVIEW = !!window.FV_PREVIEW;
   const $ = (s, el = document) => el.querySelector(s);
   const $$ = (s, el = document) => [...el.querySelectorAll(s)];
@@ -459,12 +459,13 @@
        <div><p class="mute small">Persönlich</p><p>Sprecht uns beim Bringen und Abholen an, oder werft einen Zettel in den Förderverein-Briefkasten im Eingangsbereich.</p></div></div>`;
   };
 
+  const vertretung = () => { const vs = V.vorstand || []; const vors = vs.filter(m => /vorsitz/i.test(m.rolle || "")); return (vors.length ? vors : vs).slice(0, 2); };
   SEITEN.impressum = (v) => {
     v.innerHTML = kopf("teal", "Rechtliches", "Impressum", "") + `<div class="card prose">
       <p><b>${esc(V.name)}</b><br>${esc(V.kontakt.adresse)}</p>
-      <p>Vertreten durch den Vorstand nach § 26 BGB: ${V.vorstand.slice(0, 2).map(m => esc(m.rolle + " " + m.name)).join(", ")}</p>
+      <p>Vertreten durch den Vorstand nach § 26 BGB: ${vertretung().map(m => esc(m.rolle + " " + m.name)).join(", ")}</p>
       <p>${esc(V.registergericht)}</p><p>E-Mail: ${esc(V.kontakt.email)}</p>
-      <p>Verantwortlich für den Inhalt nach § 18 Abs. 2 MStV: ${esc(V.vorstand[0].name)}, Anschrift wie oben</p>
+      <p>Verantwortlich für den Inhalt nach § 18 Abs. 2 MStV: ${esc((vertretung()[0] || {}).name || "")}, Anschrift wie oben</p>
       <p class="mute small">Vorlage – vor Veröffentlichung mit den echten Vereinsdaten füllen und prüfen lassen.</p></div>`;
   };
 
@@ -569,128 +570,27 @@
       <div class="row noprint" style="margin-top:16px">${PREVIEW ? "" : `<button class="btn sec" onclick="window.print()">${ICON.druck}Kopie drucken</button>`}<a class="btn" href="#start">Zur Startseite</a></div>`;
   }
 
-  /* ---------- Verwaltung ---------- */
-  let vTab = "antraege";
-  SEITEN.verwaltung = async (v) => {
-    if (!D.angemeldet()) {
-      v.innerHTML = kopf("teal", "Nur für den Vorstand", "Verwaltung", D.live ? "Meldet euch mit eurem Vorstandskonto an." : "Im Vorschau-Modus lautet das Passwort „" + esc(C.demoPasswort || "demo") + "“.") +
-        `<form id="login" class="card" style="max-width:420px" novalidate>
-          <div class="field"><label for="l_mail">E-Mail</label><input id="l_mail" type="email" autocomplete="username" ${D.live ? "required" : `value="vorstand@beispiel.de"`}></div>
-          <div class="field"><label for="l_pw">Passwort</label><input id="l_pw" type="password" autocomplete="current-password" required></div>
-          <p class="err" id="l_err" hidden></p><button class="btn block" type="submit">Anmelden</button></form>`;
-      $("#login").onsubmit = async (e) => {
-        e.preventDefault(); const er = $("#l_err");
-        try { await D.anmelden($("#l_mail").value.trim(), $("#l_pw").value); render(); } catch (ex) { er.textContent = ex.message; er.hidden = false; }
-      };
-      return;
-    }
-    const tabs = [["antraege", "Mitgliedsanträge"], ["listen", "Eintragelisten"]];
-    v.innerHTML = `<div class="row" style="justify-content:space-between;margin-bottom:12px"><span class="eyebrow" style="--dot:var(--teal)">Verwaltung</span><button class="btn ghost small" id="abmelden">Abmelden</button></div>
-      <div class="tabs" role="tablist">${tabs.map(([k, t]) => `<button role="tab" aria-selected="${k === vTab}" data-t="${k}">${t}</button>`).join("")}</div><div id="vInhalt"><p class="mute">Lädt …</p></div>`;
-    $("#abmelden").onclick = async () => { await D.abmelden(); render(); };
-    $$("[data-t]", v).forEach(b => b.onclick = () => { vTab = b.dataset.t; render(); });
-    const box = $("#vInhalt");
-    if (vTab === "antraege") await verwaltungAntraege(box); else await verwaltungListen(box);
-  };
-
-  async function verwaltungAntraege(box) {
-    const a = await D.antraege();
-    const neu = a.filter(x => x.status === "neu").length;
-    box.innerHTML = `<div class="row" style="justify-content:space-between;margin-bottom:12px"><h1 style="font-size:1.6rem">Mitgliedsanträge</h1>
-        ${PREVIEW ? "" : `<button class="btn sec small" id="csvBtn" ${a.length ? "" : "disabled"}>${ICON.install}Als Tabelle (CSV)</button>`}</div>
-      <p class="mute" style="margin-bottom:12px">${a.length} Anträge, davon ${neu} neu. Nach dem Übertragen in die Mitgliederverwaltung auf „angenommen“ setzen.</p>
-      ${a.length ? `<div class="tablewrap"><table><thead><tr><th>Eingang</th><th>Name</th><th>Ort</th><th>E-Mail</th><th>Beitrag</th><th>Newsletter</th><th>IBAN</th><th>Status</th></tr></thead><tbody>
-        ${a.map(x => `<tr><td class="tnum">${new Date(x.erstellt).toLocaleDateString("de-DE")}</td><td>${esc(x.vorname)} ${esc(x.nachname)}${x.kind ? `<br><span class="mute small">${esc(x.kind)}</span>` : ""}</td>
-          <td>${esc(x.plz)} ${esc(x.ort)}</td><td>${esc(x.email)}</td><td class="tnum">${euro(+x.beitrag)}</td><td>${x.newsletter ? "ja" : "–"}</td><td class="tnum">${esc(String(x.iban).replace(/(.{4})/g, "$1 "))}</td>
-          <td><select data-st="${esc(x.id)}" aria-label="Status">${["neu", "angenommen", "abgelehnt"].map(s => `<option ${s === x.status ? "selected" : ""}>${s}</option>`).join("")}</select></td></tr>`).join("")}
-      </tbody></table></div>` : `<div class="card"><p class="mute">Noch keine Anträge eingegangen.</p></div>`}`;
-    $$("[data-st]", box).forEach(s => s.onchange = async () => { try { await D.antragStatus(s.dataset.st, s.value); toast("Status gespeichert"); } catch (e) { toast(e.message); } });
-    const cb = $("#csvBtn"); if (cb) cb.onclick = () => {
-      const cols = ["erstellt", "vorname", "nachname", "strasse", "plz", "ort", "email", "telefon", "kind", "beitrag", "newsletter", "kontoinhaber", "iban", "status"];
-      const csv = "﻿" + [cols.join(";"), ...a.map(x => cols.map(c => '"' + String(x[c] ?? "").replace(/"/g, '""') + '"').join(";"))].join("\r\n");
-      const l = document.createElement("a"); l.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
-      l.download = "mitgliedsantraege_" + new Date().toISOString().slice(0, 10) + ".csv"; l.click();
-    };
-  }
-
-  async function verwaltungListen(box, bearbeiten) {
-    const listen = await D.listen({ alle: true });
-    if (bearbeiten !== undefined) return listeEditor(box, listen.find(l => l.id === bearbeiten) || null);
-    box.innerHTML = `<div class="row" style="justify-content:space-between;margin-bottom:12px"><h1 style="font-size:1.6rem">Eintragelisten</h1>
-        <button class="btn small" id="neuBtn">${ICON.plus}Neue Liste</button></div>
-      <div class="list">${listen.map(l => `<div class="card"><div class="row" style="justify-content:space-between"><div style="min-width:0"><h3>${esc(l.titel)}</h3>
-          <p class="mute small">${l.datum ? datumLang(l.datum) + " · " : ""}${gesamt(l) - frei(l)} von ${gesamt(l)} Plätzen belegt · ${l.aktiv ? "offen" : "geschlossen"}</p></div>
-          <div class="row"><button class="btn sec small" data-ed="${esc(l.id)}">Bearbeiten</button><button class="btn sec small" data-ei="${esc(l.id)}">Einträge</button><a class="btn ghost small" href="#aushang-${esc(l.id)}">Aushang</a></div></div>
-          <div id="ei-${esc(l.id)}"></div></div>`).join("") || `<div class="card"><p class="mute">Noch keine Listen. Legt die erste an.</p></div>`}</div>`;
-    $("#neuBtn").onclick = () => verwaltungListen(box, null);
-    $$("[data-ed]", box).forEach(b => b.onclick = () => verwaltungListen(box, b.dataset.ed));
-    $$("[data-ei]", box).forEach(b => b.onclick = async () => {
-      const l = listen.find(x => x.id === b.dataset.ei); const ziel = $("#ei-" + CSS.escape(l.id));
-      if (ziel.innerHTML) { ziel.innerHTML = ""; return; }
-      const e = await D.eintraegeVoll(l.id);
-      ziel.innerHTML = `<div class="tablewrap" style="margin-top:12px"><table><thead><tr><th>Aufgabe</th><th>Name</th><th>Kontakt</th><th></th></tr></thead><tbody>
-        ${l.plaetze.flatMap(p => e.filter(x => x.platz_id === p.id).map(x => `<tr><td>${esc(p.bezeichnung)} <span class="mute small">${esc(p.zeit || "")}</span></td><td>${esc(x.name)}</td><td>${esc(x.kontakt || "")}</td><td><button class="btn ghost small" data-del="${esc(x.id)}">Entfernen</button></td></tr>`)).join("") || `<tr><td colspan="4" class="mute">Noch niemand eingetragen.</td></tr>`}
-        </tbody></table></div>`;
-      $$("[data-del]", ziel).forEach(d => d.onclick = async () => { await D.eintragLoeschen(d.dataset.del); toast("Eintrag entfernt"); ziel.innerHTML = ""; b.click(); });
-    });
-  }
-
-  function listeEditor(box, l) {
-    const neu = !l;
-    l = l || { titel: "", datum: "", beschreibung: "", aktiv: true, plaetze: [{ bezeichnung: "", zeit: "", anzahl: 2 }] };
-    let plaetze = l.plaetze.map(p => ({ id: p.id, bezeichnung: p.bezeichnung, zeit: p.zeit, anzahl: p.anzahl, belegt: (p.belegt || []).length }));
-    const zeilen = () => plaetze.map((p, i) => `<div class="slot-edit">
-        <div class="field"><label for="p_b${i}">Aufgabe</label><input id="p_b${i}" type="text" value="${esc(p.bezeichnung)}" data-i="${i}" data-k="bezeichnung" placeholder="z. B. Aufsicht Hof"></div>
-        <div class="field"><label for="p_z${i}">Zeit</label><input id="p_z${i}" type="text" value="${esc(p.zeit)}" data-i="${i}" data-k="zeit" placeholder="14–16 Uhr"></div>
-        <div class="field"><label for="p_a${i}">Plätze</label><input id="p_a${i}" type="number" min="1" max="99" value="${p.anzahl}" data-i="${i}" data-k="anzahl"></div>
-        <button type="button" class="iconbtn" data-rm="${i}" aria-label="Aufgabe entfernen" ${plaetze.length < 2 ? "disabled" : ""}>${ICON.x}</button></div>`).join("");
-    box.innerHTML = `<button class="btn ghost" id="zur">${ICON.zurueck}Alle Listen</button>
-      <form id="lf" class="card" style="margin-top:8px" novalidate><h1 style="font-size:1.5rem">${neu ? "Neue Liste" : "Liste bearbeiten"}</h1>
-        <div class="cols"><div class="field"><label for="l_t">Titel</label><input id="l_t" type="text" required value="${esc(l.titel)}" placeholder="z. B. Sommerfest"></div>
-          <div class="field"><label for="l_d">Datum</label><input id="l_d" type="date" value="${esc(l.datum || "")}"></div></div>
-        <div class="field"><label for="l_b">Hinweis für die Eltern</label><textarea id="l_b" maxlength="1000">${esc(l.beschreibung || "")}</textarea></div>
-        <label class="check"><input type="checkbox" id="l_a" ${l.aktiv ? "checked" : ""}><span>Liste ist offen zum Eintragen</span></label>
-        <fieldset><legend>Aufgaben</legend><div id="pz" class="stack" style="--gap:10px">${zeilen()}</div>
-          <div><button type="button" class="btn sec small" id="plus">${ICON.plus}Aufgabe hinzufügen</button></div></fieldset>
-        <p class="mute small">Wird eine Aufgabe entfernt, werden auch die Eintragungen darin gelöscht.</p>
-        <p class="err" id="lf_err" hidden></p>
-        <div class="row"><button class="btn" type="submit">Speichern</button>${neu ? "" : `<button class="btn sec" type="button" id="loeschen" style="color:var(--err)">Liste löschen</button>`}</div>
-        <div id="sicher"></div></form>`;
-    const pz = $("#pz", box);
-    const neuZeichnen = () => { pz.innerHTML = zeilen(); binden(); };
-    const binden = () => {
-      $$("[data-k]", pz).forEach(inp => inp.oninput = () => { plaetze[+inp.dataset.i][inp.dataset.k] = inp.dataset.k === "anzahl" ? +inp.value : inp.value; });
-      $$("[data-rm]", pz).forEach(b => b.onclick = () => { plaetze.splice(+b.dataset.rm, 1); neuZeichnen(); });
-    };
-    binden();
-    $("#plus", box).onclick = () => { plaetze.push({ bezeichnung: "", zeit: "", anzahl: 1 }); neuZeichnen(); $(`#p_b${plaetze.length - 1}`, box).focus(); };
-    $("#zur", box).onclick = () => verwaltungListen(box);
-    const lb = $("#loeschen", box);
-    if (lb) lb.onclick = () => {
-      $("#sicher", box).innerHTML = `<div class="notice" style="margin-top:12px;background:var(--tint-red)"><div class="stack" style="--gap:8px"><p><b>Liste wirklich löschen?</b> Alle Eintragungen gehen verloren.</p>
-        <div class="row"><button type="button" class="btn small" style="background:var(--err)" id="jaLoeschen">Endgültig löschen</button><button type="button" class="btn sec small" id="neinLoeschen">Abbrechen</button></div></div></div>`;
-      $("#neinLoeschen", box).onclick = () => $("#sicher", box).innerHTML = "";
-      $("#jaLoeschen", box).onclick = async () => { await D.listeLoeschen(l.id); toast("Liste gelöscht"); verwaltungListen(box); };
-    };
-    $("#lf", box).onsubmit = async (e) => {
-      e.preventDefault(); const er = $("#lf_err", box);
-      const titel = $("#l_t", box).value.trim();
-      const ps = plaetze.filter(p => String(p.bezeichnung).trim());
-      if (titel.length < 2) { er.textContent = "Bitte einen Titel eingeben."; er.hidden = false; return; }
-      if (!ps.length) { er.textContent = "Mindestens eine Aufgabe eintragen."; er.hidden = false; return; }
-      try {
-        await D.listeSpeichern({ id: l.id, titel, datum: $("#l_d", box).value, beschreibung: $("#l_b", box).value.trim(), aktiv: $("#l_a", box).checked,
-          plaetze: ps.map(p => ({ id: p.id, bezeichnung: p.bezeichnung.trim(), zeit: String(p.zeit || "").trim(), anzahl: Math.max(1, Math.min(99, +p.anzahl || 1)) })) });
-        toast("Liste gespeichert"); verwaltungListen(box);
-      } catch (ex) { er.textContent = ex.message; er.hidden = false; }
-    };
-  }
-
   SEITEN.nichtgefunden = (v) => { v.innerHTML = `<div class="card"><h1>Seite nicht gefunden</h1><p class="mute" style="margin-top:8px">Diese Adresse gibt es nicht (mehr).</p><p style="margin-top:12px"><a class="btn" href="#start">Zur Startseite</a></p></div>`; };
+
+  /* ---------- Schnittstelle für verwaltung.js ---------- */
+  window.FV_APP = { SEITEN, ICON, esc, euro, toast, sheet, render, kopf, datumLang, frei, gesamt, dt, heute, farbe, qrSvg, linkZu,
+    aktualisieren(x) { uebernehmen(x); render(); } };
+
+  function uebernehmen(x) {
+    if (!x) return;
+    if (x.verein && typeof x.verein === "object") I.verein = Object.assign({}, I.verein, x.verein);
+    if (Array.isArray(x.projekte)) I.projekte = x.projekte;
+    if (Array.isArray(x.termine)) I.termine = x.termine;
+    V = I.verein;
+  }
 
   /* ---------- Start ---------- */
   try { const t = localStorage.getItem("fv_theme"); if (t) document.documentElement.dataset.theme = t; } catch (e) {}
-  shell();
-  render();
+  async function boot() {
+    try { uebernehmen(await D.inhalteLaden()); } catch (e) { console.warn(e); }
+    shell();
+    render();
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot); else boot();
   if (!PREVIEW && "serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").catch(() => {});
 })();

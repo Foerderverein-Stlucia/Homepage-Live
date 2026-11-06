@@ -8,15 +8,17 @@ und lädt nichts von fremden Servern (keine Google-Fonts, keine Tracker).
 | Datei | Inhalt |
 |---|---|
 | `index.html` | Einstieg |
-| `js/inhalte.js` | **Texte, Vorstand, Bankdaten, Projekte, Termine** – hier wird gepflegt |
+| `js/inhalte.js` | Startinhalte. Sobald in der Verwaltung gespeichert wird, gelten die Inhalte aus der Datenbank. |
 | `js/config.js` | Datenbank-Zugang und feste Adresse für QR-Codes |
 | `js/daten.js` | Datenschicht (Demo im Browser oder Supabase) |
-| `js/app.js` | Seiten, Navigation, Formulare, Verwaltung |
+| `js/app.js` | Seiten, Navigation, Formulare |
+| `js/verwaltung.js` | Verwaltung für den Vorstand |
+| `vendor/xlsx.mini.min.js` | Excel-Leser für den Mitglieder-Import (SheetJS, Apache-2.0) |
 | `css/app.css` | Gestaltung (Farben aus dem Kita-Logo, hell/dunkel) |
 | `supabase/schema.sql` | Datenbank mit Zugriffsregeln |
 | `sw.js`, `manifest.webmanifest`, `img/` | App-Installation und Symbole |
 
-Seiten: `#start #termine #mithelfen #liste-<id> #aushang-<id|mitglied|mithelfen|termine> #mitglied #projekte #projekt-<id> #verein #spenden #kontakt #impressum #datenschutz #verwaltung`
+Seiten: `#start #termine #mithelfen #liste-<id> #aushang-<id|mitglied|mithelfen|termine> #mitglied #projekte #projekt-<id> #verein #spenden #kontakt #impressum #datenschutz #verwaltung #registrieren`
 
 ## 1. Inhalte anpassen
 In `js/inhalte.js` alle Beispiele ersetzen: Vorstand, Gläubiger-ID, Bankverbindung, Adresse,
@@ -43,7 +45,31 @@ Ohne Datenbank läuft die Seite im Demo-Modus: Eintragungen bleiben auf dem eige
 Hinweis: Kostenlose Supabase-Projekte werden nach einer Woche ohne Zugriff pausiert und lassen
 sich im Dashboard mit einem Klick wieder starten. Bei regelmäßiger Nutzung passiert das nicht.
 
-## 4. Änderungen veröffentlichen
+## 4. Verwaltung (Mehr → Verwaltung)
+Alles lässt sich ohne Programmierkenntnisse in der App pflegen:
+- **Anträge:** eingegangene Mitgliedsanträge ansehen, mit „Übernehmen“ in die Mitgliederliste.
+- **Mitglieder:** anlegen, bearbeiten, Austritt eintragen, suchen, Export als CSV, Import aus Excel (.xlsx) oder CSV.
+- **Eintragelisten:** Listen und Aufgaben anlegen, Einträge ansehen, Aushang mit QR-Code.
+- **Termine** und **Projekte** (mit Foto-Upload) anlegen, ändern, löschen, Reihenfolge ändern.
+- **Vereinsdaten:** Texte, Vorstand, Kontakt, Bankverbindung, Beiträge, Gläubiger-ID, Impressumsangaben.
+- **Zugänge:** offene Anfragen freischalten (mit Amt) oder ablehnen, Zugänge entfernen, eigenes Passwort ändern, Gesamtsicherung.
+
+Voraussetzung: `supabase/erweiterung-verwaltung.sql` einmal im SQL-Editor ausführen.
+
+### Neue Vorstandsmitglieder
+1. In Supabase: Authentication → Sign In / Providers → „Allow new users to sign up“ **an**, beim Anbieter „Email“ „Confirm email“ **aus**.
+   (Neue Konten haben keinerlei Rechte, bis sie freigeschaltet sind.)
+2. Den Link `…/#registrieren` (steht mit QR-Code unter Verwaltung → Zugänge) an die Person schicken.
+3. Die Person trägt Name, E-Mail und ein eigenes Passwort ein.
+4. Unter Verwaltung → Zugänge die Anfrage prüfen (am besten kurz persönlich nachfragen), Amt eintragen, freischalten.
+
+### Übergabe bei Wechsel im Vorsitz
+- Nachfolger über den Link registrieren lassen und freischalten.
+- Zugangsdaten übergeben: Vereins-Gmail, GitHub-Konto „Foerderverein-Stlucia“, Supabase-Vereinskonto.
+- Gesamtsicherung herunterladen und sicher aufbewahren.
+- Danach entfernt der Nachfolger den alten Zugang.
+
+## 5. Änderungen am Programm veröffentlichen
 Nach jeder Änderung in `index.html` die `?v=1` hochzählen und in `sw.js` die `VERSION`
 (z. B. `fv-2`). Sonst sehen installierte Apps noch die alte Fassung.
 

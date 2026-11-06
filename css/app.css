@@ -231,6 +231,8 @@ table{border-collapse:collapse;width:100%;font-size:.92rem}
 th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);white-space:nowrap}
 th{font-size:.78rem;text-transform:uppercase;letter-spacing:.05em;color:var(--mute);background:var(--sunk)}
 .tabs{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap}
+.tabs.scroll{flex-wrap:nowrap;overflow-x:auto;padding-bottom:4px;scrollbar-width:thin}
+.tabs.scroll button{flex:none}
 .tabs button{appearance:none;border:0;cursor:pointer;font:700 .95rem var(--body);padding:8px 16px;border-radius:999px;background:var(--sunk);color:var(--ink)}
 .tabs button[aria-selected="true"]{background:var(--ink);color:var(--surface)}
 .slot-edit{display:grid;grid-template-columns:1fr 110px 70px 44px;gap:8px;align-items:end}
