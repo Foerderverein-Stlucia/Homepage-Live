@@ -104,7 +104,9 @@
   async function req(path, { method = "GET", body, auth = false, prefer } = {}) {
     const s = sitzung();
     const h = { apikey: C.supabaseKey, "Content-Type": "application/json" };
-    h.Authorization = "Bearer " + (auth && s && s.access_token ? s.access_token : C.supabaseKey);
+    // Neue Schlüssel (sb_publishable_…) nur im apikey-Header senden; Authorization nur mit Anmelde-Token
+    if (auth && s && s.access_token) h.Authorization = "Bearer " + s.access_token;
+    else if (!/^sb_/.test(C.supabaseKey)) h.Authorization = "Bearer " + C.supabaseKey;
     if (prefer) h.Prefer = prefer;
     let r = await fetch(base + path, { method, headers: h, body: body ? JSON.stringify(body) : undefined });
     if (r.status === 401 && auth && s && s.refresh_token) {
