@@ -113,6 +113,7 @@
     { id: "mitglied", t: "Mitglied", f: "blue" }
   ];
   const MEHR = [
+    { id: "start", t: "Startseite", s: "Zurück zum Anfang", f: "pink" },
     { id: "projekte", t: "Unsere Projekte", s: "Was wir schon geschafft haben", f: "pink" },
     { id: "verein", t: "Über den Verein", s: "Ziele, Vorstand, Satzung", f: "purple" },
     { id: "spenden", t: "Spenden", s: "Bankverbindung und Spendenquittung", f: "yellow" },
