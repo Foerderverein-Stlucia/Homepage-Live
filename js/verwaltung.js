@@ -423,6 +423,7 @@
         ${feld("t_text", "Beschreibung", t.text, { k: "text", type: "textarea" })}
         <div class="cols">${feld("t_farbe", "Farbe", t.farbe, { k: "farbe", type: "select", opts: FARBEN })}
           ${feld("t_liste", "Eintrageliste dazu", t.liste || "", { k: "liste", type: "select", opts: [["", "– keine –"], ...listen.map(l => [l.id, l.titel + (l.datum ? " (" + datumLang(l.datum) + ")" : "")])], hint: "Zeigt beim Termin einen Knopf „Helfen“." })}</div>
+        ${feld("t_spende", "Spendenknopf", t.spende ? "ja" : "", { k: "spende", type: "select", opts: [["", "– kein Knopf –"], ["ja", "Knopf „Spenden“ beim Termin zeigen"]], hint: "Führt direkt zur Spendenseite, zum Beispiel für Termine zu einem Projekt, für das gesammelt wird." })}
         <p class="err" id="tf_err" hidden></p>
         <div class="row"><button class="btn" type="submit">Speichern</button>${neu ? "" : `<button class="btn sec" type="button" id="tDel" style="color:var(--err)">Termin löschen</button>`}</div>
         <div id="sicher"></div></form>`;

@@ -320,6 +320,7 @@
         ${kompakt ? "" : `<p style="margin-top:6px">${esc(t.text || "")}</p>`}
         <div class="acts noprint">
           ${t.liste ? `<a class="btn small green" href="#liste-${esc(t.liste)}">${ICON.mithelfen}Helfen</a>` : ""}
+          ${t.spende ? `<a class="btn small" href="#spenden">Spenden</a>` : ""}
           ${kompakt || PREVIEW ? "" : `<button class="btn small sec" data-ics="${esc(t.id)}">${ICON.kal}In den Kalender</button>`}
         </div></div></article>`;
   }
