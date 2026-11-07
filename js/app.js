@@ -220,6 +220,28 @@
     },
     async aus() { const a = await Push.abo(); if (a) { const e = a.endpoint; await a.unsubscribe(); try { await D.pushAbmelden(e); } catch (x) {} } }
   };
+  /* Einmaliger Hinweis in der installierten App; bei "Nicht jetzt" frühestens nach 30 Tagen wieder */
+  async function pushEinladung() {
+    if (!Push.moeglich() || !standalone() || Notification.permission !== "default") return;
+    let zuletzt = 0; try { zuletzt = +localStorage.getItem("fv_push_gefragt") || 0; } catch (e) {}
+    if (zuletzt && Date.now() - zuletzt < 30 * 864e5) return;
+    if (await Push.abo()) return;
+    if (document.querySelector(".sheet-bg")) return;
+    try { localStorage.setItem("fv_push_gefragt", String(Date.now())); } catch (e) {}
+    sheet(`<h2>Nichts verpassen?</h2>
+      <p class="mute" style="margin-top:6px">Schaltet Benachrichtigungen ein, dann meldet sich die App bei euch:</p>
+      <ul style="margin:10px 0 12px;padding-left:1.2em"><li>bei wichtigen Mitteilungen des Vorstands</li><li>wenn ihr von der Warteliste nachrückt</li><li>am Vortag eures Helferdienstes</li></ul>
+      <p class="mute small">Keine Werbung. Ihr könnt es jederzeit im Menü unter „Benachrichtigungen“ ausschalten.</p>
+      <p class="err" id="pushErr" hidden></p>
+      <button class="btn green block" id="pushJa" style="margin-top:12px">Benachrichtigungen einschalten</button>
+      <button class="btn ghost block" data-zu style="margin-top:6px">Nicht jetzt</button>`, (bg, zu) => {
+      $("#pushJa", bg).onclick = async (e) => {
+        e.target.disabled = true;
+        try { await Push.an(); zu(); toast("Benachrichtigungen sind an"); }
+        catch (ex) { const er = $("#pushErr", bg); er.textContent = ex.message; er.hidden = false; e.target.disabled = false; }
+      };
+    });
+  }
   async function pushDialog() {
     const abo = Push.moeglich() ? await Push.abo() : null, an = !!abo && Notification.permission === "granted";
     const nein = !Push.moeglich() ? "Benachrichtigungen sind in dieser Ansicht nicht verfügbar." : Push.brauchtApp() ? "Auf dem iPhone und iPad gehen Benachrichtigungen nur, wenn die Seite als App auf dem Home-Bildschirm liegt. Legt sie zuerst dort ab und öffnet sie dann von dort." : "";
@@ -756,7 +778,7 @@
     try { uebernehmen(await D.inhalteLaden()); } catch (e) { console.warn(e); }
     shell();
     render();
-    if (Push.moeglich()) setTimeout(() => Push.sync(), 3000);
+    if (Push.moeglich()) { setTimeout(() => Push.sync(), 3000); setTimeout(pushEinladung, 5000); }
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot); else boot();
   if (!PREVIEW && "serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").catch(() => {});
