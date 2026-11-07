@@ -1,9 +1,9 @@
 /* Service Worker: macht die App installierbar und offline lesbar.
    Bei jeder Änderung an Dateien VERSION hochzählen. */
-const VERSION = "fv-23";
-const DATEIEN = ["./", "index.html", "css/app.css?v=23", "js/config.js?v=23", "js/inhalte.js?v=23", "js/daten.js?v=23", "js/app.js?v=23", "js/verwaltung.js?v=23",
+const VERSION = "fv-24";
+const DATEIEN = ["./", "index.html", "css/app.css?v=24", "js/config.js?v=24", "js/inhalte.js?v=24", "js/daten.js?v=24", "js/app.js?v=24", "js/verwaltung.js?v=24",
   "vendor/qrcode.js", "fonts/fredoka.woff2", "fonts/source-sans-3.woff2",
-  "img/logo.png", "img/icon-192.png", "img/icon-512.png", "img/favicon.png", "manifest.webmanifest"];
+  "img/logo.png", "img/logo-punkte.png", "img/icon-192.png", "img/icon-512.png", "img/favicon.png", "manifest.webmanifest"];
 
 self.addEventListener("install", e => { e.waitUntil(caches.open(VERSION).then(c => c.addAll(DATEIEN)).then(() => self.skipWaiting())); });
 self.addEventListener("activate", e => {

@@ -131,7 +131,7 @@
       <a class="sr" href="#inhalt">Zum Inhalt springen</a>
       ${D.live ? "" : `<div class="modebar noprint">Vorschau: Eingaben werden nur auf diesem Gerät gespeichert.</div>`}
       <header class="top"><div class="wrap">
-        <a class="brand" href="#start" aria-label="Startseite"><img src="${window.FV_LOGO || "img/logo.png"}" alt="" width="60" height="40"><span>Förderverein<small>Kita St. Lucia · ${esc(V.ort)}</small></span></a>
+        <a class="brand" href="#start" aria-label="Startseite"><img src="${window.FV_LOGO_PUNKTE || "img/logo-punkte.png"}" alt="" width="40" height="40"><span>Förderverein<small>Kita St. Lucia · ${esc(V.ort)}</small></span></a>
         <nav class="topnav" aria-label="Hauptnavigation">${TOPNAV.map(([h, t]) => `<a href="#${h}" data-nav="${h}">${t}</a>`).join("")}</nav>
         <button class="iconbtn menu-btn" id="menuBtn" aria-label="Menü öffnen">${ICON.menu}</button>
       </div></header>

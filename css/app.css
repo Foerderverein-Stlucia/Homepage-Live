@@ -252,7 +252,7 @@ th{font-size:.78rem;text-transform:uppercase;letter-spacing:.05em;color:var(--mu
 .poster table{font-size:1rem;color:#111}
 .poster th{background:#f1f1f1;color:#333}
 .poster td{height:40px;border-bottom:1px solid #bbb}
-.poster .logo{height:64px;width:auto}
+.poster .logo{height:150px;width:auto}
 .poster .bar{display:flex;gap:6px;margin-top:20px}
 .poster .bar i{flex:1;height:8px;border-radius:999px}
 
