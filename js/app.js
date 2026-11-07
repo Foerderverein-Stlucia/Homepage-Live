@@ -329,10 +329,11 @@
   const fortschritt = (p) => (+p.ziel > 0 && +p.gesammelt >= 0 && p.gesammelt !== "" && p.gesammelt != null) ? `<span class="fort" role="img" aria-label="${euro(+p.gesammelt)} von ${euro(+p.ziel)} gesammelt"><i style="width:${Math.min(100, Math.round(+p.gesammelt / +p.ziel * 100))}%"></i></span><span class="fortz tnum">${euro(+p.gesammelt)} von ${euro(+p.ziel)} gesammelt</span>` : (+p.ziel > 0 ? `<span class="fortz tnum">Ziel: ${euro(+p.ziel)}</span>` : "");
   const projSumme = () => fertige().reduce((s, p) => s + (+p.betrag || 0), 0);
   const projJahre = () => fertige().map(p => p.jahr).filter(Boolean);
+  const jahresSumme = (j) => fertige().filter(p => (p.jahr || 0) === j).reduce((t, p) => t + (+p.betrag || 0), 0);
   function summenZeile() {
-    const sum = projSumme(), j = projJahre(), n = sum ? fertige().filter(p => +p.betrag).length : fertige().length;
-    return sum ? `<div class="total"><b class="tnum">${euro(sum)}</b><span class="mute">für ${n} Projekte${j.length ? " seit " + Math.min(...j) : ""}</span></div>`
-               : `<div class="total"><b class="tnum">${n} Projekte</b><span class="mute">dank eurer Beiträge und Spenden verwirklicht</span></div>`;
+    const jj = projJahre(); const neu = jj.length ? Math.max(...jj) : 0, sum = neu ? jahresSumme(neu) : 0;
+    return sum ? `<div class="total"><b class="tnum">${euro(sum)}</b><span class="mute">haben wir ${neu} für die Kita-Kinder eingesetzt</span></div>`
+               : `<div class="total"><b class="tnum">${fertige().length} Projekte</b><span class="mute">dank eurer Beiträge und Spenden verwirklicht</span></div>`;
   }
   function projektKarte(p) {
     return `<a class="card link proj" href="#projekt-${esc(p.id)}" style="${farbe(p.farbe)}">
@@ -538,10 +539,10 @@
 
   SEITEN.projekte = (v) => {
     const jahre = [...new Set(fertige().map(p => p.jahr || 0))].sort((a, b) => b - a);
-    v.innerHTML = kopf("pink", "Projekte", "Das haben wir geschafft", "Mit Mitgliedsbeiträgen, Spenden und den Erlösen unserer Feste finanzieren wir, was im Kita-Alltag fehlt.") +
+    v.innerHTML = kopf("pink", "Projekte", "Unsere Projekte", "Mit Mitgliedsbeiträgen, Spenden und den Erlösen unserer Feste finanzieren wir, was im Kita-Alltag fehlt.") +
       (geplante().length ? `<section><h2 class="month" style="margin-top:0">Geplant</h2><p class="mute" style="margin:2px 0 10px">Dafür sammeln wir gerade. Jede Spende hilft, diese Wünsche zu erfüllen.</p><div class="grid2">${geplante().map(projektKarte).join("")}</div><p style="margin-top:12px"><a class="btn small" href="#spenden">Jetzt spenden</a></p></section>` : "") +
-      (fertige().length ? summenZeile() : "") +
-      jahre.map(j => `${jahre.length > 1 || j ? `<h2 class="month">${j || "Bereits umgesetzt"}</h2>` : ""}<div class="grid2">${fertige().filter(p => (p.jahr || 0) === j).map(projektKarte).join("")}</div>`).join("") +
+      (fertige().length ? `<h2 style="margin:28px 0 4px">Das haben wir geschafft</h2>` : "") +
+      jahre.map(j => { const sum = j ? jahresSumme(j) : 0; return `<div class="jahrkopf"><h2 class="month">${j || "Früher umgesetzt"}</h2>${sum ? `<span class="jahrsumme tnum">${euro(sum)} eingesetzt</span>` : ""}</div><div class="grid2">${fertige().filter(p => (p.jahr || 0) === j).map(projektKarte).join("")}</div>`; }).join("") +
       `<section><div class="card"><h3>Ihr habt eine Idee?</h3><p class="mute" style="margin-top:4px">Vorschläge für neue Projekte nehmen wir gern entgegen, zum Beispiel bei der Mitgliederversammlung oder per E-Mail.</p><p style="margin-top:12px"><a class="btn sec small" href="#kontakt">Kontakt aufnehmen</a></p></div></section>`;
   };
 

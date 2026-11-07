@@ -302,3 +302,7 @@ th{font-size:.78rem;text-transform:uppercase;letter-spacing:.05em;color:var(--mu
 .fort{display:block;height:10px;border-radius:999px;background:var(--sunk);overflow:hidden;margin-top:8px}
 .fort i{display:block;height:100%;background:var(--green);border-radius:999px}
 .fortz{display:block;font-size:.85rem;font-weight:700;margin-top:4px;color:var(--ink)}
+
+.jahrkopf{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:22px}
+.jahrkopf .month{margin:0}
+.jahrsumme{font-weight:700;color:var(--green);font-size:.95rem}
