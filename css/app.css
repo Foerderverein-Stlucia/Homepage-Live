@@ -266,3 +266,16 @@ th{font-size:.78rem;text-transform:uppercase;letter-spacing:.05em;color:var(--mu
   .poster .qrbox svg{width:60mm;height:60mm}
   .card{break-inside:avoid}
 }
+
+/* Instagram */
+.menu .ig{width:18px;height:18px;flex:none;margin-left:0;color:var(--pink)}
+.menu .ig svg{width:18px;height:18px;display:block}
+.igkopf{display:flex;align-items:center;gap:8px}
+.igkopf svg,.btn svg,.iglink svg{width:20px;height:20px;flex:none}
+.iglink{display:flex;align-items:center;gap:8px}
+.iglink svg{color:var(--pink)}
+.igkopf svg{color:var(--pink)}
+.poster .igbox{display:flex;align-items:center;gap:16px;justify-content:center;margin:16px 0 4px;text-align:left;color:#222}
+.poster .igbox>svg{width:110px;height:110px;flex:none}
+.poster .igbox p svg{width:18px;height:18px;vertical-align:-3px;margin-right:6px}
+@media print{.poster .igbox>svg{width:32mm;height:32mm}}

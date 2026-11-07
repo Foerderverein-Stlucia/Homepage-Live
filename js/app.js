@@ -29,6 +29,7 @@
   /* ---------- Symbole (eigene Strichzeichnungen) ---------- */
   const svg = (p, vb = "0 0 24 24") => `<svg viewBox="${vb}" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${p}</svg>`;
   const ICON = {
+    insta: svg('<rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.2" cy="6.8" r="1" fill="currentColor" stroke="none"/>'),
     start: svg('<path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/>'),
     termine: svg('<rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/><circle cx="8.5" cy="15" r="1.2" fill="currentColor"/>'),
     mithelfen: svg('<path d="M7 11V6.5a1.5 1.5 0 013 0V11"/><path d="M10 10V5a1.5 1.5 0 013 0v6"/><path d="M13 10.5V6.5a1.5 1.5 0 013 0V14"/><path d="M7 11a1.5 1.5 0 00-3 0v2c0 4.4 3 8 7.5 8S16 18 16 14"/>'),
@@ -161,7 +162,7 @@
     const theme = document.documentElement.dataset.theme || "";
     sheet(`<nav class="menu" aria-label="Weitere Seiten">
       ${MEHR.filter(m => m.id !== "galerie" || (I.galerie || []).length).map(m => `<a href="#${m.id}" data-zu style="--dot:var(--${m.f})"><span class="d"></span><span>${m.t}<small>${m.s}</small></span></a>`).join("")}
-      ${igName() ? `<a href="https://www.instagram.com/${esc(igName())}/" target="_blank" rel="noopener noreferrer" style="--dot:var(--pink)"><span class="d"></span><span>Instagram<small>@${esc(igName())}</small></span></a>` : ""}
+      ${igName() ? `<a href="https://www.instagram.com/${esc(igName())}/" target="_blank" rel="noopener noreferrer"><span class="ig">${ICON.insta}</span><span>Instagram<small>@${esc(igName())}</small></span></a>` : ""}
       <hr>
       ${installierbar() && installEvt ? `<button id="instBtn"><span class="d" style="--dot:var(--green)"></span><span>App installieren<small>Auf den Startbildschirm legen</small></span></button>` : ""}
       ${Push.moeglich() ? `<button id="pushHilfe"><span class="d" style="--dot:var(--pink)"></span><span>Benachrichtigungen<small>Hinweise und Erinnerungen aufs Handy</small></span></button>` : ""}
@@ -386,7 +387,7 @@
         ${summenZeile()}
         <div class="grid2">${I.projekte.slice(0, 2).map(projektKarte).join("")}</div>
       </section>
-      ${igName() ? `<section><div class="card"><h3>Folgt uns auf Instagram</h3><p class="mute" style="margin-top:4px">Aktuelle Bilder und Neuigkeiten aus dem Vereinsleben.</p><p style="margin-top:10px"><a class="btn sec" href="https://www.instagram.com/${esc(igName())}/" target="_blank" rel="noopener noreferrer">@${esc(igName())}</a></p></div></section>` : ""}
+      ${igName() ? `<section><div class="card"><h3 class="igkopf">${ICON.insta}Folgt uns auf Instagram</h3><p class="mute" style="margin-top:4px">Aktuelle Bilder und Neuigkeiten aus dem Vereinsleben.</p><p style="margin-top:10px"><a class="btn sec" href="https://www.instagram.com/${esc(igName())}/" target="_blank" rel="noopener noreferrer">${ICON.insta}@${esc(igName())}</a></p></div></section>` : ""}
       ${V.zitat ? `<section><blockquote class="zitat"><p>„${esc(V.zitat[0])}</p><p>${esc(V.zitat[1])}“</p></blockquote></section>` : ""}`;
     const ib = $("#instStart"); if (ib) ib.onclick = installieren;
   };
@@ -522,7 +523,7 @@
         <div class="qrbox">${qrSvg(url)}<div class="stack" style="--gap:10px"><p style="font-size:1.15rem">${esc(text)}</p><p class="url">${esc(url)}</p></div></div>
         ${tabelle}
         <p style="margin-top:16px;color:#444">${esc(V.name)}</p>
-        ${igName() ? `<p style="margin-top:4px;color:#444">Instagram: @${esc(igName())}</p>` : ""}
+        ${igName() ? `<div class="igbox">${qrSvg("https://www.instagram.com/" + igName() + "/")}<p>${ICON.insta}<b>Folgt uns auf Instagram</b><br>@${esc(igName())}</p></div>` : ""}
         <div class="bar">${["pink", "blue", "green", "orange", "purple", "yellow", "red", "teal"].map(c => `<i style="background:var(--${c})"></i>`).join("")}</div>
       </article>`;
     $$("[data-a]", v).forEach(b => b.onclick = () => location.hash = "aushang-" + b.dataset.a);
@@ -586,7 +587,7 @@
   SEITEN.kontakt = (v) => {
     v.innerHTML = kopf("teal", "Kontakt", "Schreibt uns", "Fragen zur Mitgliedschaft, Ideen für Projekte oder Lust, im Vorstand mitzumachen?") +
       `<div class="card stack" style="--gap:12px"><div><p class="mute small">E-Mail</p><p style="font-weight:700"><a href="mailto:${esc(V.kontakt.email)}">${esc(V.kontakt.email)}</a></p></div>
-       ${igName() ? `<div><p class="mute small">Instagram</p><p style="font-weight:700"><a href="https://www.instagram.com/${esc(igName())}/" target="_blank" rel="noopener noreferrer">@${esc(igName())}</a></p></div>` : ""}
+       ${igName() ? `<div><p class="mute small">Instagram</p><p style="font-weight:700" class="iglink">${ICON.insta}<a href="https://www.instagram.com/${esc(igName())}/" target="_blank" rel="noopener noreferrer">@${esc(igName())}</a></p></div>` : ""}
        <div><p class="mute small">Post</p><p>${esc(V.kontakt.adresse)}</p></div>
        <div><p class="mute small">Persönlich</p><p>Sprecht uns beim Bringen und Abholen an, oder werft einen Zettel in den Förderverein-Briefkasten im Eingangsbereich.</p></div></div>`;
   };
