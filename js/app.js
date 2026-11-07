@@ -161,6 +161,7 @@
     const theme = document.documentElement.dataset.theme || "";
     sheet(`<nav class="menu" aria-label="Weitere Seiten">
       ${MEHR.filter(m => m.id !== "galerie" || (I.galerie || []).length).map(m => `<a href="#${m.id}" data-zu style="--dot:var(--${m.f})"><span class="d"></span><span>${m.t}<small>${m.s}</small></span></a>`).join("")}
+      ${igName() ? `<a href="https://www.instagram.com/${esc(igName())}/" target="_blank" rel="noopener noreferrer" style="--dot:var(--pink)"><span class="d"></span><span>Instagram<small>@${esc(igName())}</small></span></a>` : ""}
       <hr>
       ${installierbar() && installEvt ? `<button id="instBtn"><span class="d" style="--dot:var(--green)"></span><span>App installieren<small>Auf den Startbildschirm legen</small></span></button>` : ""}
       ${Push.moeglich() ? `<button id="pushHilfe"><span class="d" style="--dot:var(--pink)"></span><span>Benachrichtigungen<small>Hinweise und Erinnerungen aufs Handy</small></span></button>` : ""}
@@ -385,6 +386,7 @@
         ${summenZeile()}
         <div class="grid2">${I.projekte.slice(0, 2).map(projektKarte).join("")}</div>
       </section>
+      ${igName() ? `<section><div class="card"><h3>Folgt uns auf Instagram</h3><p class="mute" style="margin-top:4px">Aktuelle Bilder und Neuigkeiten aus dem Vereinsleben.</p><p style="margin-top:10px"><a class="btn sec" href="https://www.instagram.com/${esc(igName())}/" target="_blank" rel="noopener noreferrer">@${esc(igName())}</a></p></div></section>` : ""}
       ${V.zitat ? `<section><blockquote class="zitat"><p>„${esc(V.zitat[0])}</p><p>${esc(V.zitat[1])}“</p></blockquote></section>` : ""}`;
     const ib = $("#instStart"); if (ib) ib.onclick = installieren;
   };
@@ -520,6 +522,7 @@
         <div class="qrbox">${qrSvg(url)}<div class="stack" style="--gap:10px"><p style="font-size:1.15rem">${esc(text)}</p><p class="url">${esc(url)}</p></div></div>
         ${tabelle}
         <p style="margin-top:16px;color:#444">${esc(V.name)}</p>
+        ${igName() ? `<p style="margin-top:4px;color:#444">Instagram: @${esc(igName())}</p>` : ""}
         <div class="bar">${["pink", "blue", "green", "orange", "purple", "yellow", "red", "teal"].map(c => `<i style="background:var(--${c})"></i>`).join("")}</div>
       </article>`;
     $$("[data-a]", v).forEach(b => b.onclick = () => location.hash = "aushang-" + b.dataset.a);
