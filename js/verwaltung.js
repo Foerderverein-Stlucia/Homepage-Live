@@ -460,6 +460,7 @@
   function projektEditor(box, p) {
     const neu = !p; p = p || { titel: "", jahr: "", betrag: "", farbe: "pink", symbol: "stern", kurz: "", text: [], partner: "", bild: "" };
     let bild = p.bild || "";
+    let fotos = (p.fotos || []).slice();
     box.innerHTML = `<button class="btn ghost" id="zur">${ICON.zurueck}Alle Projekte</button>
       <form id="pf" class="card" style="margin-top:8px" novalidate><h1 style="font-size:1.5rem">${neu ? "Neues Projekt" : "Projekt bearbeiten"}</h1>
         ${feld("p_titel", "Titel", p.titel, { k: "titel", ph: "z. B. Neue Fahrzeuge für den Hof" })}
@@ -468,11 +469,17 @@
         <div class="cols">${feld("p_jahr", "Jahr (freiwillig)", p.jahr || "", { k: "jahr", attrs: 'inputmode="numeric" maxlength="4"' })}${feld("p_betrag", "Betrag in € (freiwillig)", p.betrag || "", { k: "betrag", attrs: 'inputmode="decimal"' })}</div>
         ${feld("p_partner", "Mit Hilfe von (freiwillig)", p.partner, { k: "partner" })}
         <div class="cols">${feld("p_farbe", "Farbe", p.farbe, { k: "farbe", type: "select", opts: FARBEN })}${feld("p_symbol", "Symbol (wenn kein Foto)", p.symbol, { k: "symbol", type: "select", opts: SYMBOLE })}</div>
-        <fieldset><legend>Foto</legend>
+        <fieldset><legend>Bild für die Übersicht</legend>
           <div id="bildVorschau">${bild ? `<img src="${esc(bild)}" alt="" style="max-height:200px;border-radius:12px">` : `<p class="mute small">Noch kein Foto.</p>`}</div>
           <div class="row"><label class="btn sec small" for="p_datei" style="cursor:pointer">${bild ? "Foto ersetzen" : "Foto auswählen"}</label><input id="p_datei" type="file" accept="image/*" class="sr">
             <button type="button" class="btn ghost small" id="bildWeg" ${bild ? "" : "hidden"}>Foto entfernen</button></div>
           <p class="hint small mute">Fotos, auf denen Kinder zu erkennen sind, nur mit schriftlicher Einwilligung der Eltern veröffentlichen. Große Fotos werden automatisch verkleinert.</p>
+        </fieldset>
+        <fieldset><legend>Weitere Fotos zum Projekt</legend>
+          <p class="hint small mute" style="margin-bottom:8px">Diese Fotos erscheinen auf der Seite des Projekts, wenn man es antippt. Mehrere auf einmal auswählen ist möglich.</p>
+          <div id="fotoListe" class="fotoliste"></div>
+          <div class="row"><label class="btn sec small" for="p_fotos" style="cursor:pointer">Fotos hinzufügen</label><input id="p_fotos" type="file" accept="image/*" multiple class="sr"></div>
+          <p class="hint small mute" id="fotoStatus"></p>
         </fieldset>
         <p class="err" id="pf_err" hidden></p>
         <div class="row"><button class="btn" type="submit">Speichern</button>${neu ? "" : `<button class="btn sec" type="button" id="pDel" style="color:var(--err)">Projekt löschen</button>`}</div>
@@ -480,6 +487,20 @@
     const vorschau = () => { $("#bildVorschau", box).innerHTML = bild ? `<img src="${esc(bild)}" alt="" style="max-height:200px;border-radius:12px">` : `<p class="mute small">Noch kein Foto.</p>`; $("#bildWeg", box).hidden = !bild; };
     $("#zur", box).onclick = () => TAB.projekte(box);
     $("#bildWeg", box).onclick = () => { bild = ""; vorschau(); };
+    const fotoZeigen = () => { $("#fotoListe", box).innerHTML = fotos.map((u, i) => `<div class="fotoitem"><img src="${esc(u)}" alt=""><button type="button" class="iconbtn" data-fx="${i}" aria-label="Foto entfernen">${ICON.x}</button></div>`).join("") || `<p class="mute small">Noch keine weiteren Fotos.</p>`;
+      $$("[data-fx]", box).forEach(b => b.onclick = () => { fotos.splice(+b.dataset.fx, 1); fotoZeigen(); }); };
+    fotoZeigen();
+    $("#p_fotos", box).onchange = async (e) => {
+      const liste = [...e.target.files]; if (!liste.length) return; const st = $("#fotoStatus", box); let ok = 0;
+      for (const datei of liste) {
+        if (fotos.length >= 20) { st.textContent = "Mehr als 20 Fotos pro Projekt sind nicht möglich."; break; }
+        st.textContent = "Foto " + (ok + 1) + " von " + liste.length + " wird hochgeladen …";
+        try { const blob = await verkleinern(datei, D.live ? 1600 : 800); fotos.push(await D.bildHochladen(blob, datei.name)); ok++; fotoZeigen(); }
+        catch (ex) { st.textContent = ex.message; break; }
+      }
+      if (ok) { st.textContent = ok + " Foto(s) hochgeladen, bitte noch speichern."; toast("Fotos hochgeladen, bitte noch speichern"); }
+      e.target.value = "";
+    };
     $("#p_datei", box).onchange = async (e) => {
       const datei = e.target.files[0]; if (!datei) return;
       $("#bildVorschau", box).innerHTML = `<p class="mute small">Foto wird hochgeladen …</p>`;
@@ -494,7 +515,7 @@
       const d = datenSammeln($("#pf", box));
       if (d.titel.length < 2) { er.textContent = "Bitte einen Titel eingeben."; er.hidden = false; return; }
       const obj = { titel: d.titel, kurz: d.kurz, text: d.text.split(/\n\s*\n/).map(x => x.trim()).filter(Boolean), jahr: d.jahr ? parseInt(d.jahr, 10) || null : null,
-        betrag: d.betrag ? parseFloat(String(d.betrag).replace(/\./g, "").replace(",", ".")) || null : null, partner: d.partner, farbe: d.farbe, symbol: d.symbol, bild };
+        betrag: d.betrag ? parseFloat(String(d.betrag).replace(/\./g, "").replace(",", ".")) || null : null, partner: d.partner, farbe: d.farbe, symbol: d.symbol, bild, fotos };
       const arr = (IN().projekte || []).slice();
       if (neu) arr.unshift({ id: eindeutig(slug(d.titel), arr.map(x => x.id)), ...obj });
       else { const i = arr.findIndex(x => x.id === p.id); arr[i] = { ...arr[i], ...obj }; }

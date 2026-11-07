@@ -538,15 +538,29 @@
       `<section><div class="card"><h3>Ihr habt eine Idee?</h3><p class="mute" style="margin-top:4px">Vorschläge für neue Projekte nehmen wir gern entgegen, zum Beispiel bei der Mitgliederversammlung oder per E-Mail.</p><p style="margin-top:12px"><a class="btn sec small" href="#kontakt">Kontakt aufnehmen</a></p></div></section>`;
   };
 
+  function lightbox(liste, start, titel) {
+    let i = start; const el = document.createElement("div"); el.className = "lightbox"; el.setAttribute("role", "dialog"); el.setAttribute("aria-label", "Fotos: " + titel);
+    const zu = () => { el.remove(); document.removeEventListener("keydown", taste); };
+    const zeig = () => { el.innerHTML = `<img src="${esc(liste[i])}" alt="${esc(titel)}"><button type="button" class="lb-x" aria-label="Schließen">${ICON.x}</button>${liste.length > 1 ? `<button type="button" class="lb-p" aria-label="Voriges Foto">‹</button><button type="button" class="lb-n" aria-label="Nächstes Foto">›</button><span class="lb-z">${i + 1} / ${liste.length}</span>` : ""}`;
+      $(".lb-x", el).onclick = zu; const pr = $(".lb-p", el), nx = $(".lb-n", el);
+      if (pr) { pr.onclick = (e) => { e.stopPropagation(); i = (i + liste.length - 1) % liste.length; zeig(); }; nx.onclick = (e) => { e.stopPropagation(); i = (i + 1) % liste.length; zeig(); }; } };
+    const taste = (e) => { if (e.key === "Escape") zu(); else if (e.key === "ArrowLeft" && liste.length > 1) { i = (i + liste.length - 1) % liste.length; zeig(); } else if (e.key === "ArrowRight" && liste.length > 1) { i = (i + 1) % liste.length; zeig(); } };
+    el.onclick = (e) => { if (e.target === el) zu(); };
+    document.addEventListener("keydown", taste); zeig(); document.body.appendChild(el);
+  }
+
   SEITEN.projekt = (v, id) => {
     const p = I.projekte.find(x => x.id === id);
     if (!p) { v.innerHTML = zurueck("projekte", "Alle Projekte") + `<div class="card"><h2>Projekt nicht gefunden</h2></div>`; return; }
+    const fotos = (p.fotos || []).filter(Boolean);
     v.innerHTML = zurueck("projekte", "Alle Projekte") +
-      (p.bild ? `<img class="proj-foto" src="${esc(p.bild)}" alt="${esc(p.titel)}">` : `<div class="proj-hero" style="${farbe(p.farbe)}">${ICON[p.symbol] || ICON.stern}</div>`) +
+      (fotos.length ? `<img class="proj-foto" src="${esc(fotos[0])}" alt="${esc(p.titel)}" data-fo="0" style="cursor:zoom-in">` : p.bild ? `<img class="proj-foto" src="${esc(p.bild)}" alt="${esc(p.titel)}">` : `<div class="proj-hero" style="${farbe(p.farbe)}">${ICON[p.symbol] || ICON.stern}</div>`) +
       kopf(p.farbe, p.jahr ? "Umgesetzt " + p.jahr : "Umgesetzt", esc(p.titel), esc(p.kurz)) +
       (p.betrag || p.jahr || p.partner ? `<dl class="facts">${p.betrag ? `<div><dt>Förderung</dt><dd class="tnum">${euro(p.betrag)}</dd></div>` : ""}${p.jahr ? `<div><dt>Jahr</dt><dd class="tnum">${p.jahr}</dd></div>` : ""}${p.partner ? `<div><dt>Mit Hilfe von</dt><dd style="font-size:1rem">${esc(p.partner)}</dd></div>` : ""}</dl>` : "") +
       `<div class="prose">${(p.text || []).map(t => `<p>${esc(t)}</p>`).join("")}</div>
+      ${fotos.length > 1 ? `<section style="margin-top:24px"><h2>Fotos</h2><div class="fotogitter">${fotos.map((u, i) => `<button type="button" data-fo="${i}" aria-label="Foto ${i + 1} vergrößern"><img src="${esc(u)}" alt="" loading="lazy"></button>`).join("")}</div></section>` : ""}
       <div class="row noprint" style="margin-top:20px"><button class="btn sec small" id="teilenBtn">${ICON.teilen}Projekt teilen</button></div>`;
+    $$("[data-fo]", v).forEach(b => b.onclick = () => lightbox(fotos, +b.dataset.fo, p.titel));
     $("#teilenBtn").onclick = () => teilen(p.titel, "projekt-" + p.id);
   };
 
