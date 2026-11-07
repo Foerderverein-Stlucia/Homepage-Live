@@ -1,7 +1,7 @@
 /* Service Worker: macht die App installierbar und offline lesbar.
    Bei jeder Änderung an Dateien VERSION hochzählen. */
-const VERSION = "fv-29";
-const DATEIEN = ["./", "index.html", "css/app.css?v=29", "js/config.js?v=29", "js/inhalte.js?v=29", "js/daten.js?v=29", "js/app.js?v=29", "js/verwaltung.js?v=29",
+const VERSION = "fv-30";
+const DATEIEN = ["./", "index.html", "css/app.css?v=30", "js/config.js?v=30", "js/inhalte.js?v=30", "js/daten.js?v=30", "js/app.js?v=30", "js/verwaltung.js?v=30",
   "vendor/qrcode.js", "fonts/fredoka.woff2", "fonts/source-sans-3.woff2",
   "img/logo.png", "img/logo-punkte.png", "img/icon-192.png", "img/icon-512.png", "img/favicon.png", "manifest.webmanifest"];
 
