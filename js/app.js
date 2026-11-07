@@ -242,6 +242,20 @@
       };
     });
   }
+  /* Im Browser auf dem Handy: einmalig zur Installation als App einladen (danach frühestens nach 30 Tagen wieder) */
+  function installEinladung() {
+    if (PREVIEW || standalone() || !matchMedia("(pointer:coarse)").matches || document.querySelector(".sheet-bg")) return;
+    let zuletzt = 0; try { zuletzt = +localStorage.getItem("fv_inst_gefragt") || 0; } catch (e) {}
+    if (zuletzt && Date.now() - zuletzt < 30 * 864e5) return;
+    try { localStorage.setItem("fv_inst_gefragt", String(Date.now())); } catch (e) {}
+    sheet(`<h2>Als App aufs Handy?</h2>
+      <p class="mute" style="margin-top:6px">Mit dem Symbol auf dem Startbildschirm öffnet sich die Seite wie eine App, und ihr könnt Benachrichtigungen einschalten:</p>
+      <ul style="margin:10px 0 12px;padding-left:1.2em"><li>Hinweise vom Vorstand zu Festen und Aktionen</li><li>Erinnerung am Vortag eures Helferdienstes</li><li>Bescheid, wenn ihr von der Warteliste nachrückt</li></ul>
+      <button class="btn green block" id="instJa" style="margin-top:12px">${installEvt ? "App installieren" : "So geht’s"}</button>
+      <button class="btn ghost block" data-zu style="margin-top:6px">Nicht jetzt</button>`, (bg, zu) => {
+      $("#instJa", bg).onclick = () => { zu(); installieren(); };
+    });
+  }
   async function pushDialog() {
     const abo = Push.moeglich() ? await Push.abo() : null, an = !!abo && Notification.permission === "granted";
     const nein = !Push.moeglich() ? "Benachrichtigungen sind in dieser Ansicht nicht verfügbar." : Push.brauchtApp() ? "Auf dem iPhone und iPad gehen Benachrichtigungen nur, wenn die Seite als App auf dem Home-Bildschirm liegt. Legt sie zuerst dort ab und öffnet sie dann von dort." : "";
@@ -779,6 +793,7 @@
     shell();
     render();
     if (Push.moeglich()) { setTimeout(() => Push.sync(), 3000); setTimeout(pushEinladung, 5000); }
+    setTimeout(installEinladung, 7000);
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot); else boot();
   if (!PREVIEW && "serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").catch(() => {});
