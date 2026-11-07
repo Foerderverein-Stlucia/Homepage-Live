@@ -323,10 +323,14 @@
           ${kompakt || PREVIEW ? "" : `<button class="btn small sec" data-ics="${esc(t.id)}">${ICON.kal}In den Kalender</button>`}
         </div></div></article>`;
   }
-  const projSumme = () => I.projekte.reduce((s, p) => s + (+p.betrag || 0), 0);
-  const projJahre = () => I.projekte.map(p => p.jahr).filter(Boolean);
+  const istGeplant = (p) => p.status === "geplant";
+  const fertige = () => I.projekte.filter(p => !istGeplant(p));
+  const geplante = () => I.projekte.filter(istGeplant);
+  const fortschritt = (p) => (+p.ziel > 0 && +p.gesammelt >= 0 && p.gesammelt !== "" && p.gesammelt != null) ? `<span class="fort" role="img" aria-label="${euro(+p.gesammelt)} von ${euro(+p.ziel)} gesammelt"><i style="width:${Math.min(100, Math.round(+p.gesammelt / +p.ziel * 100))}%"></i></span><span class="fortz tnum">${euro(+p.gesammelt)} von ${euro(+p.ziel)} gesammelt</span>` : (+p.ziel > 0 ? `<span class="fortz tnum">Ziel: ${euro(+p.ziel)}</span>` : "");
+  const projSumme = () => fertige().reduce((s, p) => s + (+p.betrag || 0), 0);
+  const projJahre = () => fertige().map(p => p.jahr).filter(Boolean);
   function summenZeile() {
-    const sum = projSumme(), j = projJahre(), n = sum ? I.projekte.filter(p => +p.betrag).length : I.projekte.length;
+    const sum = projSumme(), j = projJahre(), n = sum ? fertige().filter(p => +p.betrag).length : fertige().length;
     return sum ? `<div class="total"><b class="tnum">${euro(sum)}</b><span class="mute">für ${n} Projekte${j.length ? " seit " + Math.min(...j) : ""}</span></div>`
                : `<div class="total"><b class="tnum">${n} Projekte</b><span class="mute">dank eurer Beiträge und Spenden verwirklicht</span></div>`;
   }
@@ -334,7 +338,8 @@
     return `<a class="card link proj" href="#projekt-${esc(p.id)}" style="${farbe(p.farbe)}">
       ${p.bild ? `<img class="badge photo" src="${esc(p.bild)}" alt="" loading="lazy">` : `<span class="badge">${ICON[p.symbol] || ICON.stern}</span>`}
       <span style="min-width:0"><h3>${esc(p.titel)}</h3><p>${esc(p.kurz)}</p>
-      ${p.jahr || p.betrag ? `<span class="chips">${p.jahr ? `<span class="chip c tnum">${p.jahr}</span>` : ""}${p.betrag ? `<span class="chip tnum">${euro(p.betrag)}</span>` : ""}</span>` : ""}</span></a>`;
+      ${istGeplant(p) ? `<span class="chips"><span class="chip c">Geplant</span></span>${fortschritt(p)}` : ""}
+      ${!istGeplant(p) && (p.jahr || p.betrag) ? `<span class="chips">${p.jahr ? `<span class="chip c tnum">${p.jahr}</span>` : ""}${p.betrag ? `<span class="chip tnum">${euro(p.betrag)}</span>` : ""}</span>` : ""}</span></a>`;
   }
   function andere(belegt, meineHier) {
     const rest = belegt.slice();
@@ -385,8 +390,9 @@
       <section>
         <div class="sec-head"><h2>Das haben wir geschafft</h2><a href="#projekte">Alle Projekte</a></div>
         ${summenZeile()}
-        <div class="grid2">${I.projekte.slice(0, 2).map(projektKarte).join("")}</div>
+        <div class="grid2">${fertige().slice(0, 2).map(projektKarte).join("")}</div>
       </section>
+      ${geplante().length ? `<section><div class="sec-head"><h2>Dafür sammeln wir gerade</h2><a href="#projekte">Alle Projekte</a></div><div class="grid2">${geplante().slice(0, 2).map(projektKarte).join("")}</div></section>` : ""}
       ${igName() ? `<section><div class="card"><h3 class="igkopf">${ICON.insta}Folgt uns auf Instagram</h3><p class="mute" style="margin-top:4px">Aktuelle Bilder und Neuigkeiten aus dem Vereinsleben.</p><p style="margin-top:10px"><a class="btn sec" href="https://www.instagram.com/${esc(igName())}/" target="_blank" rel="noopener noreferrer">${ICON.insta}@${esc(igName())}</a></p></div></section>` : ""}
       ${V.zitat ? `<section><blockquote class="zitat"><p>„${esc(V.zitat[0])}</p><p>${esc(V.zitat[1])}“</p></blockquote></section>` : ""}`;
     const ib = $("#instStart"); if (ib) ib.onclick = installieren;
@@ -531,10 +537,11 @@
   };
 
   SEITEN.projekte = (v) => {
-    const jahre = [...new Set(I.projekte.map(p => p.jahr || 0))].sort((a, b) => b - a);
+    const jahre = [...new Set(fertige().map(p => p.jahr || 0))].sort((a, b) => b - a);
     v.innerHTML = kopf("pink", "Projekte", "Das haben wir geschafft", "Mit Mitgliedsbeiträgen, Spenden und den Erlösen unserer Feste finanzieren wir, was im Kita-Alltag fehlt.") +
-      summenZeile() +
-      jahre.map(j => `${jahre.length > 1 || j ? `<h2 class="month">${j || "Bereits umgesetzt"}</h2>` : ""}<div class="grid2">${I.projekte.filter(p => (p.jahr || 0) === j).map(projektKarte).join("")}</div>`).join("") +
+      (geplante().length ? `<section><h2 class="month" style="margin-top:0">Geplant</h2><p class="mute" style="margin:2px 0 10px">Dafür sammeln wir gerade. Jede Spende hilft, diese Wünsche zu erfüllen.</p><div class="grid2">${geplante().map(projektKarte).join("")}</div><p style="margin-top:12px"><a class="btn small" href="#spenden">Jetzt spenden</a></p></section>` : "") +
+      (fertige().length ? summenZeile() : "") +
+      jahre.map(j => `${jahre.length > 1 || j ? `<h2 class="month">${j || "Bereits umgesetzt"}</h2>` : ""}<div class="grid2">${fertige().filter(p => (p.jahr || 0) === j).map(projektKarte).join("")}</div>`).join("") +
       `<section><div class="card"><h3>Ihr habt eine Idee?</h3><p class="mute" style="margin-top:4px">Vorschläge für neue Projekte nehmen wir gern entgegen, zum Beispiel bei der Mitgliederversammlung oder per E-Mail.</p><p style="margin-top:12px"><a class="btn sec small" href="#kontakt">Kontakt aufnehmen</a></p></div></section>`;
   };
 
@@ -555,8 +562,9 @@
     const fotos = (p.fotos || []).filter(Boolean);
     v.innerHTML = zurueck("projekte", "Alle Projekte") +
       (fotos.length ? `<img class="proj-foto" src="${esc(fotos[0])}" alt="${esc(p.titel)}" data-fo="0" style="cursor:zoom-in">` : p.bild ? `<img class="proj-foto" src="${esc(p.bild)}" alt="${esc(p.titel)}">` : `<div class="proj-hero" style="${farbe(p.farbe)}">${ICON[p.symbol] || ICON.stern}</div>`) +
-      kopf(p.farbe, p.jahr ? "Umgesetzt " + p.jahr : "Umgesetzt", esc(p.titel), esc(p.kurz)) +
-      (p.betrag || p.jahr || p.partner ? `<dl class="facts">${p.betrag ? `<div><dt>Förderung</dt><dd class="tnum">${euro(p.betrag)}</dd></div>` : ""}${p.jahr ? `<div><dt>Jahr</dt><dd class="tnum">${p.jahr}</dd></div>` : ""}${p.partner ? `<div><dt>Mit Hilfe von</dt><dd style="font-size:1rem">${esc(p.partner)}</dd></div>` : ""}</dl>` : "") +
+      kopf(p.farbe, istGeplant(p) ? "Geplant" : p.jahr ? "Umgesetzt " + p.jahr : "Umgesetzt", esc(p.titel), esc(p.kurz)) +
+      (istGeplant(p) ? `<div class="card" style="margin-bottom:16px;--dot:var(--${p.farbe || "yellow"})"><h3>Dafür sammeln wir gerade</h3><div style="margin-top:8px">${fortschritt(p)}</div><p class="mute small" style="margin-top:8px">Schreibt bei der Überweisung „Spende ${esc(p.titel)}“ in den Verwendungszweck.</p><p style="margin-top:12px"><a class="btn small" href="#spenden">Jetzt spenden</a></p></div>` : "") +
+      (!istGeplant(p) && (p.betrag || p.jahr || p.partner) || istGeplant(p) && p.partner ? `<dl class="facts">${!istGeplant(p) && p.betrag ? `<div><dt>Förderung</dt><dd class="tnum">${euro(p.betrag)}</dd></div>` : ""}${!istGeplant(p) && p.jahr ? `<div><dt>Jahr</dt><dd class="tnum">${p.jahr}</dd></div>` : ""}${p.partner ? `<div><dt>Mit Hilfe von</dt><dd style="font-size:1rem">${esc(p.partner)}</dd></div>` : ""}</dl>` : "") +
       `<div class="prose">${(p.text || []).map(t => `<p>${esc(t)}</p>`).join("")}</div>
       ${fotos.length > 1 ? `<section style="margin-top:24px"><h2>Fotos</h2><div class="fotogitter">${fotos.map((u, i) => `<button type="button" data-fo="${i}" aria-label="Foto ${i + 1} vergrößern"><img src="${esc(u)}" alt="" loading="lazy"></button>`).join("")}</div></section>` : ""}
       <div class="row noprint" style="margin-top:20px"><button class="btn sec small" id="teilenBtn">${ICON.teilen}Projekt teilen</button></div>`;

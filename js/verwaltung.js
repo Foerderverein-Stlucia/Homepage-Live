@@ -449,7 +449,7 @@
       <p class="mute small" style="margin-bottom:12px">Die Reihenfolge hier ist auch die Reihenfolge auf der Seite. Die ersten beiden erscheinen auf der Startseite.</p>
       <div class="list">${projekte.map((p, i) => `<div class="card row" style="justify-content:space-between;--dot:var(--${p.farbe || "blue"});--tint:var(--tint-${p.farbe || "blue"})">
           <div class="row" style="min-width:0;flex:1 1 220px;flex-wrap:nowrap">${p.bild ? `<img src="${esc(p.bild)}" alt="" style="width:52px;height:52px;object-fit:cover;border-radius:12px;flex:none">` : `<span class="badge" style="width:52px;height:52px;border-radius:12px;background:var(--tint);color:var(--dot);display:grid;place-items:center;flex:none">${ICON[p.symbol] || ICON.stern}</span>`}
-            <div style="min-width:0"><h3>${esc(p.titel)}</h3><p class="mute small">${[p.jahr, p.betrag ? euro(+p.betrag) : ""].filter(Boolean).join(" · ") || "ohne Jahr und Betrag"}</p></div></div>
+            <div style="min-width:0"><h3>${esc(p.titel)}</h3><p class="mute small">${p.status === "geplant" ? "Geplant" + (p.ziel ? " · Ziel " + euro(+p.ziel) : "") : [p.jahr, p.betrag ? euro(+p.betrag) : ""].filter(Boolean).join(" · ") || "ohne Jahr und Betrag"}</p></div></div>
           <div class="row"><button class="iconbtn" data-up="${i}" aria-label="Nach oben" ${i ? "" : "disabled"}>▲</button><button class="iconbtn" data-down="${i}" aria-label="Nach unten" ${i < projekte.length - 1 ? "" : "disabled"}>▼</button><button class="btn sec small" data-ed="${esc(p.id)}">Bearbeiten</button></div></div>`).join("") || `<div class="card"><p class="mute">Noch keine Projekte.</p></div>`}</div>`;
     $("#pNeu", box).onclick = () => TAB.projekte(box, null);
     $$("[data-ed]", box).forEach(b => b.onclick = () => TAB.projekte(box, b.dataset.ed));
@@ -457,6 +457,7 @@
     $$("[data-up]", box).forEach(b => b.onclick = () => schieben(+b.dataset.up, -1));
     $$("[data-down]", box).forEach(b => b.onclick = () => schieben(+b.dataset.down, 1));
   };
+  const zahl = (x) => x ? parseFloat(String(x).replace(/\./g, "").replace(",", ".")) || null : null;
   function projektEditor(box, p) {
     const neu = !p; p = p || { titel: "", jahr: "", betrag: "", farbe: "pink", symbol: "stern", kurz: "", text: [], partner: "", bild: "" };
     let bild = p.bild || "";
@@ -466,6 +467,8 @@
         ${feld("p_titel", "Titel", p.titel, { k: "titel", ph: "z. B. Neue Fahrzeuge für den Hof" })}
         ${feld("p_kurz", "Kurzbeschreibung (ein Satz)", p.kurz, { k: "kurz" })}
         ${feld("p_text", "Ausführlicher Text", (p.text || []).join("\n\n"), { k: "text", type: "textarea", rows: 5, hint: "Leerzeile = neuer Absatz." })}
+        ${feld("p_status", "Status", p.status === "geplant" ? "geplant" : "", { k: "status", type: "select", opts: [["", "Umgesetzt"], ["geplant", "Geplant (dafür wird gesammelt)"]] })}
+        <div class="cols" id="geplantFelder">${feld("p_ziel", "Zielbetrag in € (nur geplant)", p.ziel || "", { k: "ziel", attrs: 'inputmode="decimal"' })}${feld("p_gesammelt", "Bisher gesammelt in € (freiwillig)", p.gesammelt || "", { k: "gesammelt", attrs: 'inputmode="decimal"' })}</div>
         <div class="cols">${feld("p_jahr", "Jahr (freiwillig)", p.jahr || "", { k: "jahr", attrs: 'inputmode="numeric" maxlength="4"' })}${feld("p_betrag", "Betrag in € (freiwillig)", p.betrag || "", { k: "betrag", attrs: 'inputmode="decimal"' })}</div>
         ${feld("p_partner", "Mit Hilfe von (freiwillig)", p.partner, { k: "partner" })}
         <div class="cols">${feld("p_farbe", "Farbe", p.farbe, { k: "farbe", type: "select", opts: FARBEN })}${feld("p_symbol", "Symbol (wenn kein Foto)", p.symbol, { k: "symbol", type: "select", opts: SYMBOLE })}</div>
@@ -486,6 +489,7 @@
         <div id="sicher"></div></form>`;
     const vorschau = () => { $("#bildVorschau", box).innerHTML = bild ? `<img src="${esc(bild)}" alt="" style="max-height:200px;border-radius:12px">` : `<p class="mute small">Noch kein Foto.</p>`; $("#bildWeg", box).hidden = !bild; };
     $("#zur", box).onclick = () => TAB.projekte(box);
+    const gf = () => { $("#geplantFelder", box).hidden = $("#p_status", box).value !== "geplant"; }; $("#p_status", box).onchange = gf; gf();
     $("#bildWeg", box).onclick = () => { bild = ""; vorschau(); };
     const fotoZeigen = () => { $("#fotoListe", box).innerHTML = fotos.map((u, i) => `<div class="fotoitem"><img src="${esc(u)}" alt=""><button type="button" class="iconbtn" data-fx="${i}" aria-label="Foto entfernen">${ICON.x}</button></div>`).join("") || `<p class="mute small">Noch keine weiteren Fotos.</p>`;
       $$("[data-fx]", box).forEach(b => b.onclick = () => { fotos.splice(+b.dataset.fx, 1); fotoZeigen(); }); };
@@ -515,7 +519,8 @@
       const d = datenSammeln($("#pf", box));
       if (d.titel.length < 2) { er.textContent = "Bitte einen Titel eingeben."; er.hidden = false; return; }
       const obj = { titel: d.titel, kurz: d.kurz, text: d.text.split(/\n\s*\n/).map(x => x.trim()).filter(Boolean), jahr: d.jahr ? parseInt(d.jahr, 10) || null : null,
-        betrag: d.betrag ? parseFloat(String(d.betrag).replace(/\./g, "").replace(",", ".")) || null : null, partner: d.partner, farbe: d.farbe, symbol: d.symbol, bild, fotos };
+        betrag: d.betrag ? parseFloat(String(d.betrag).replace(/\./g, "").replace(",", ".")) || null : null, partner: d.partner, farbe: d.farbe, symbol: d.symbol, bild, fotos,
+        status: d.status === "geplant" ? "geplant" : "", ziel: zahl(d.ziel), gesammelt: zahl(d.gesammelt) };
       const arr = (IN().projekte || []).slice();
       if (neu) arr.unshift({ id: eindeutig(slug(d.titel), arr.map(x => x.id)), ...obj });
       else { const i = arr.findIndex(x => x.id === p.id); arr[i] = { ...arr[i], ...obj }; }
