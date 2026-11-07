@@ -326,7 +326,7 @@
   const projSumme = () => I.projekte.reduce((s, p) => s + (+p.betrag || 0), 0);
   const projJahre = () => I.projekte.map(p => p.jahr).filter(Boolean);
   function summenZeile() {
-    const sum = projSumme(), j = projJahre(), n = I.projekte.length;
+    const sum = projSumme(), j = projJahre(), n = sum ? I.projekte.filter(p => +p.betrag).length : I.projekte.length;
     return sum ? `<div class="total"><b class="tnum">${euro(sum)}</b><span class="mute">für ${n} Projekte${j.length ? " seit " + Math.min(...j) : ""}</span></div>`
                : `<div class="total"><b class="tnum">${n} Projekte</b><span class="mute">dank eurer Beiträge und Spenden verwirklicht</span></div>`;
   }
