@@ -85,6 +85,9 @@ Voraussetzung: `supabase/erweiterung-verwaltung.sql` einmal im SQL-Editor ausfü
 - **Zuwendungsbestätigung**: erst Angaben aus dem Freistellungsbescheid unter Vereinsdaten → Rechtliches eintragen, dann im Mitglied „Bestätigung drucken“. Text vor der Nutzung mit Finanzamt oder Steuerberater abgleichen.
 - **Kalender**: Termine und eigene Helferdienste lassen sich als .ics in den Handykalender legen.
 - **Statistik**: anonyme Seitenaufrufe pro Tag und Seite, Handy/Computer, App/Browser. Keine Cookies, keine Kennung, keine Personendaten. Datenbank: `supabase/erweiterung-statistik.sql`.
+- **Warteliste**: Ist ein Platz voll, können sich Eltern auf die Warteliste setzen und rücken automatisch nach (Datenbank-Trigger). Der Vorstand sieht „Warteliste“ bzw. „nachgerückt am …“ mit Kontaktdaten. Datenbank: `supabase/erweiterung-warteliste.sql`.
+- **Sicherung** ist verschlüsselt (Endung `.fvsicherung`, AES-GCM, Passwort bleibt im Kopf des Vorstands). Öffnen: Verwaltung → Übersicht → „Sicherung öffnen“.
+- **Papierantrag**: leeres Formular unter „Mitglied werden“ → „Formular drucken“. Nach dem Online-Antrag gibt es den ausgefüllten Antrag zum Unterschreiben (Drucken oder als PDF speichern).
 - Datenbank: `supabase/erweiterung-inhalte.sql` (bereits eingespielt).
 
 ## 5. Änderungen am Programm veröffentlichen

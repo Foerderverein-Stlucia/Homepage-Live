@@ -46,27 +46,44 @@
     const r = z.filter(x => x.tag >= v), sum = (k, f) => { const m = new Map(); r.forEach(x => m.set(f(x), (m.get(f(x)) || 0) + x.anzahl)); return [...m].map(([a, anzahl]) => ({ ...k(a), anzahl })); };
     return { tage: sum(a => ({ tag: a }), x => x.tag).sort((a, b) => a.tag.localeCompare(b.tag)), seiten: sum(a => ({ seite: a }), x => x.seite).sort((a, b) => b.anzahl - a.anzahl), geraete: sum(a => ({ geraet: a }), x => x.geraet), app: sum(a => ({ app: a }), x => x.app) };
   }
+  function demoNachruecken(db, platzId) {
+    const p = db.listen.flatMap(l => l.plaetze).find(x => x.id === platzId); if (!p) return;
+    while (db.eintraege.filter(e => e.platz_id === platzId && !e.warteliste).length < p.anzahl) {
+      const w = db.eintraege.filter(e => e.platz_id === platzId && e.warteliste).sort((a, b) => a.erstellt.localeCompare(b.erstellt))[0];
+      if (!w) break; w.warteliste = false; w.nachgerueckt = new Date().toISOString();
+    }
+  }
   const Demo = {
     async listen({ alle = false } = {}) {
       const db = demoDb();
       return db.listen.filter(l => alle || l.aktiv).map(l => ({ ...l,
         plaetze: l.plaetze.slice().sort((a, b) => a.reihenfolge - b.reihenfolge).map(p => ({ ...p,
-          belegt: db.eintraege.filter(e => e.platz_id === p.id).map(e => ({ name: anzeigename(e.name), token: e.token })) })) }))
+          belegt: db.eintraege.filter(e => e.platz_id === p.id && !e.warteliste).map(e => ({ name: anzeigename(e.name), token: e.token })),
+          warte: db.eintraege.filter(e => e.platz_id === p.id && e.warteliste).map(e => ({ name: anzeigename(e.name), token: e.token })) })) }))
         .sort((a, b) => String(a.datum).localeCompare(String(b.datum)));
     },
-    async eintragen(platzId, name, kontakt) {
+    async eintragen(platzId, name, kontakt, warte) {
       const db = demoDb();
       const l = db.listen.find(l => l.plaetze.some(p => p.id === platzId));
       const p = l && l.plaetze.find(p => p.id === platzId);
       if (!p || !l.aktiv) throw new Error("Diese Liste ist nicht mehr offen.");
-      if (db.eintraege.filter(e => e.platz_id === platzId).length >= p.anzahl) throw new Error("Dieser Platz ist schon voll.");
+      let w = false;
+      if (db.eintraege.filter(e => e.platz_id === platzId && !e.warteliste).length >= p.anzahl) {
+        if (!warte || db.eintraege.filter(e => e.platz_id === platzId && e.warteliste).length >= 20) throw new Error("Dieser Platz ist schon voll.");
+        w = true;
+      }
       const token = uid();
-      db.eintraege.push({ id: uid(), platz_id: platzId, name, kontakt, token, erstellt: new Date().toISOString() });
+      db.eintraege.push({ id: uid(), platz_id: platzId, name, kontakt, token, warteliste: w, erstellt: new Date().toISOString() });
       demoSave(db); return token;
     },
     async austragen(token) {
-      const db = demoDb(); const n = db.eintraege.length;
-      db.eintraege = db.eintraege.filter(e => e.token !== token); demoSave(db); return db.eintraege.length < n;
+      const db = demoDb(); const n = db.eintraege.length; const alt = db.eintraege.find(e => e.token === token);
+      db.eintraege = db.eintraege.filter(e => e.token !== token); if (alt) demoNachruecken(db, alt.platz_id); demoSave(db); return db.eintraege.length < n;
+    },
+    async status(tokens) {
+      const db = demoDb(); const r = {};
+      db.eintraege.filter(e => tokens.includes(e.token)).forEach(e => { r[e.token] = { warte: !!e.warteliste, platz: e.warteliste ? db.eintraege.filter(w => w.platz_id === e.platz_id && w.warteliste && w.erstellt <= e.erstellt).length : 0 }; });
+      return r;
     },
     async antrag(a) { const db = demoDb(); db.antraege.push({ ...a, id: uid(), erstellt: new Date().toISOString(), status: "neu" }); demoSave(db); },
     // Verwaltung
@@ -80,7 +97,7 @@
       const ids = l.plaetze.map(p => p.id);
       return db.eintraege.filter(e => ids.includes(e.platz_id));
     },
-    async eintragLoeschen(id) { const db = demoDb(); db.eintraege = db.eintraege.filter(e => e.id !== id); demoSave(db); },
+    async eintragLoeschen(id) { const db = demoDb(); const alt = db.eintraege.find(e => e.id === id); db.eintraege = db.eintraege.filter(e => e.id !== id); if (alt) demoNachruecken(db, alt.platz_id); demoSave(db); },
     async listeSpeichern(l) {
       const db = demoDb();
       const neu = { id: l.id || uid(), titel: l.titel, datum: l.datum || null, beschreibung: l.beschreibung || "", aktiv: !!l.aktiv,
@@ -182,10 +199,16 @@
       const q = "/rest/v1/listen?select=id,titel,datum,beschreibung,aktiv,plaetze(id,bezeichnung,zeit,anzahl,reihenfolge)&order=datum.asc.nullslast" + (alle ? "" : "&aktiv=eq.true");
       const [ls, bel] = await Promise.all([req(q, { auth }), req("/rest/v1/rpc/belegung", { method: "POST", body: {} })]);
       return ls.map(l => ({ ...l, plaetze: l.plaetze.sort((a, b) => a.reihenfolge - b.reihenfolge).map(p => ({ ...p,
-        belegt: bel.filter(b => b.platz_id === p.id).map(b => ({ name: b.anzeigename, token: null })) })) }));
+        belegt: bel.filter(b => b.platz_id === p.id && !b.warteliste).map(b => ({ name: b.anzeigename, token: null })),
+        warte: bel.filter(b => b.platz_id === p.id && b.warteliste).map(b => ({ name: b.anzeigename, token: null })) })) }));
     },
-    async eintragen(platzId, name, kontakt) {
-      return await req("/rest/v1/rpc/eintragen", { method: "POST", body: { p_platz: platzId, p_name: name, p_kontakt: kontakt || "" } });
+    async eintragen(platzId, name, kontakt, warte) {
+      return await req("/rest/v1/rpc/eintragen", { method: "POST", body: { p_platz: platzId, p_name: name, p_kontakt: kontakt || "", p_warteliste: !!warte } });
+    },
+    async status(tokens) {
+      if (!tokens.length) return {};
+      const r = await req("/rest/v1/rpc/meine_status", { method: "POST", body: { p_tokens: tokens } }); const o = {};
+      (r || []).forEach(x => o[x.token] = { warte: x.warteliste, platz: x.platzierung }); return o;
     },
     async austragen(token) { return await req("/rest/v1/rpc/austragen", { method: "POST", body: { p_token: token } }); },
     async antrag(a) {
@@ -216,7 +239,7 @@
     async eintraegeVoll(listeId) {
       const ps = await req("/rest/v1/plaetze?select=id&liste_id=eq." + listeId, { auth: true });
       if (!ps.length) return [];
-      return await req("/rest/v1/eintraege?select=id,platz_id,name,kontakt,erstellt&platz_id=in.(" + ps.map(p => p.id).join(",") + ")&order=erstellt.asc", { auth: true });
+      return await req("/rest/v1/eintraege?select=id,platz_id,name,kontakt,erstellt,warteliste,nachgerueckt&platz_id=in.(" + ps.map(p => p.id).join(",") + ")&order=erstellt.asc", { auth: true });
     },
     async eintragLoeschen(id) { await req("/rest/v1/eintraege?id=eq." + id, { method: "DELETE", auth: true }); },
     async listeSpeichern(l) {

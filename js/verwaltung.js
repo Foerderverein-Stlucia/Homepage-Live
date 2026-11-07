@@ -347,7 +347,7 @@
       if (ziel.innerHTML) { ziel.innerHTML = ""; return; }
       const e = await D.eintraegeVoll(l.id);
       ziel.innerHTML = `<div class="tablewrap" style="margin-top:12px"><table><thead><tr><th>Aufgabe</th><th>Name</th><th>Kontakt</th><th></th></tr></thead><tbody>
-        ${l.plaetze.flatMap(p => e.filter(x => x.platz_id === p.id).map(x => `<tr><td>${esc(p.bezeichnung)} <span class="mute small">${esc(p.zeit || "")}</span></td><td>${esc(x.name)}</td><td>${esc(x.kontakt || "")}</td><td><button class="btn ghost small" data-del="${esc(x.id)}">Entfernen</button></td></tr>`)).join("") || `<tr><td colspan="4" class="mute">Noch niemand eingetragen.</td></tr>`}
+        ${l.plaetze.flatMap(p => e.filter(x => x.platz_id === p.id).map(x => `<tr><td>${esc(p.bezeichnung)} <span class="mute small">${esc(p.zeit || "")}</span></td><td>${esc(x.name)}${x.warteliste ? ` <span class="chip c" style="--dot:var(--orange);--tint:var(--tint-orange)">Warteliste</span>` : x.nachgerueckt ? ` <span class="chip c" style="--dot:var(--green);--tint:var(--tint-green)">nachgerückt am ${esc(new Date(x.nachgerueckt).toLocaleDateString("de-DE"))}</span>` : ""}</td><td>${esc(x.kontakt || "")}</td><td><button class="btn ghost small" data-del="${esc(x.id)}">Entfernen</button></td></tr>`)).join("") || `<tr><td colspan="4" class="mute">Noch niemand eingetragen.</td></tr>`}
         </tbody></table></div>`;
       $$("[data-del]", ziel).forEach(d => d.onclick = async () => { await D.eintragLoeschen(d.dataset.del); toast("Eintrag entfernt"); ziel.innerHTML = ""; b.click(); });
     });
@@ -610,7 +610,7 @@
 
       <section><div class="card stack" style="--gap:10px"><h2>Datensicherung und Übergabe</h2>
         <p class="mute small">Lädt alle Inhalte, Termine, Projekte, Listen, Anträge und die Mitgliederliste als eine Datei herunter. Sicher aufbewahren, sie enthält Bankdaten.</p>
-        <div><button class="btn sec" id="sicherung">${ICON.install}Gesamtsicherung herunterladen</button></div>
+        <div><button class="btn sec" id="sicherung">${ICON.install}Gesamtsicherung (verschlüsselt) herunterladen</button></div>
         <p class="mute small">Bei einem Wechsel im Vorsitz: Nachfolger über den Link oben einen Zugang beantragen lassen und freischalten, Zugangsdaten von GitHub, Supabase und dem Vereins-Postfach übergeben, danach den eigenen Zugang durch den Nachfolger entfernen lassen.</p></div></section>`;
 
     const aufSeite = async (name, amt) => {
@@ -651,20 +651,66 @@
       if (a !== b) { er.textContent = "Die beiden Eingaben stimmen nicht überein."; er.hidden = false; return; }
       try { await D.passwortAendern(a); $("#pw1", box).value = $("#pw2", box).value = ""; toast("Passwort geändert"); } catch (ex) { er.textContent = ex.message; er.hidden = false; }
     };
-    $("#sicherung", box).onclick = async (e) => {
-      e.target.disabled = true;
-      try { await sicherungErstellen(); } catch (ex) { toast(ex.message); }
-      e.target.disabled = false;
-    };
+    $("#sicherung", box).onclick = async () => { try { if (await sicherungErstellen()) toast("Verschlüsselte Sicherung heruntergeladen"); } catch (ex) { toast(ex.message); } };
   };
 
   /* ---------- Sicherung (auch von der Übersicht aus) ---------- */
+  /* Verschlüsselung der Sicherung: AES-GCM, Schlüssel aus Passwort (PBKDF2-SHA256, 250.000 Runden) – alles im Browser */
+  const b64 = (u8) => { let t = ""; for (let i = 0; i < u8.length; i += 0x8000) t += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000)); return btoa(t); };
+  const ub64 = (t) => Uint8Array.from(atob(t), c => c.charCodeAt(0));
+  async function schluessel(pw, salt, iter) {
+    const k = await crypto.subtle.importKey("raw", new TextEncoder().encode(pw), "PBKDF2", false, ["deriveKey"]);
+    return crypto.subtle.deriveKey({ name: "PBKDF2", salt, iterations: iter, hash: "SHA-256" }, k, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
+  }
+  async function verschluesseln(text, pw) {
+    const salt = crypto.getRandomValues(new Uint8Array(16)), iv = crypto.getRandomValues(new Uint8Array(12)), iter = 250000;
+    const ct = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv }, await schluessel(pw, salt, iter), new TextEncoder().encode(text)));
+    return JSON.stringify({ fvSicherung: 1, alg: "AES-GCM/PBKDF2-SHA256", iter, salt: b64(salt), iv: b64(iv), daten: b64(ct) });
+  }
+  async function entschluesseln(json, pw) {
+    const o = JSON.parse(json); if (!o.fvSicherung) throw new Error("Das ist keine Sicherungsdatei des Vereins.");
+    try { return new TextDecoder().decode(await crypto.subtle.decrypt({ name: "AES-GCM", iv: ub64(o.iv) }, await schluessel(pw, ub64(o.salt), o.iter), ub64(o.daten))); }
+    catch (e) { throw new Error("Passwort falsch oder Datei beschädigt."); }
+  }
+  function sicherungsPasswort(neu) {
+    return new Promise((ok) => {
+      sheet(`<h2>${neu ? "Sicherung verschlüsseln" : "Sicherung öffnen"}</h2>
+        <p class="mute" style="margin-top:4px">${neu ? "Die Datei enthält Mitglieder- und Bankdaten und wird mit diesem Passwort verschlüsselt. Ohne das Passwort ist sie nicht lesbar, es kann auch von uns nicht zurückgeholt werden. Bitte gut aufbewahren, am besten getrennt von der Datei." : "Passwort der Sicherung eingeben."}</p>
+        <form id="spw" style="margin-top:12px" novalidate>
+          <div class="field"><label for="s_pw">Passwort${neu ? " (mindestens 10 Zeichen)" : ""}</label><input id="s_pw" type="password" autocomplete="new-password"></div>
+          ${neu ? `<div class="field"><label for="s_pw2">Passwort wiederholen</label><input id="s_pw2" type="password" autocomplete="new-password"></div>` : ""}
+          <p class="err" id="s_err" hidden></p>
+          <div class="row"><button class="btn" type="submit">${neu ? "Verschlüsseln und herunterladen" : "Öffnen"}</button><button class="btn sec" type="button" data-zu>Abbrechen</button></div></form>`, (bg, zu) => {
+        $("[data-zu]", bg).addEventListener("click", () => ok(null));
+        $("#s_pw", bg).focus();
+        $("#spw", bg).onsubmit = (e) => {
+          e.preventDefault(); const er = $("#s_err", bg), pw = $("#s_pw", bg).value;
+          if (neu && pw.length < 10) { er.textContent = "Bitte mindestens 10 Zeichen."; er.hidden = false; return; }
+          if (neu && pw !== $("#s_pw2", bg).value) { er.textContent = "Die Passwörter sind nicht gleich."; er.hidden = false; return; }
+          if (!pw) { er.textContent = "Bitte Passwort eingeben."; er.hidden = false; return; }
+          zu(); ok(pw);
+        };
+      });
+    });
+  }
   async function sicherungErstellen() {
+    const pw = await sicherungsPasswort(true); if (!pw) return false;
     const [mitglieder, antraege, listen, aufgaben] = await Promise.all([D.mitglieder(), D.antraege(), D.listen({ alle: true }), D.inhaltLesen("aufgaben").catch(() => null)]);
     const eintraege = {}; for (const l of listen) eintraege[l.id] = await D.eintraegeVoll(l.id);
     const daten = { erstellt: new Date().toISOString(), verein: IN().verein, termine: IN().termine, projekte: IN().projekte, neuigkeiten: IN().neuigkeiten || [], galerie: IN().galerie || [], aufgaben: aufgaben || [], listen, eintraege, antraege, mitglieder };
-    herunterladen("foerderverein-sicherung-" + heuteISO() + ".json", JSON.stringify(daten, null, 2), "application/json");
+    herunterladen("foerderverein-sicherung-" + heuteISO() + ".fvsicherung", await verschluesseln(JSON.stringify(daten), pw), "application/json");
     try { localStorage.setItem("fv_sicherung", heuteISO()); } catch (e) {}
+    return true;
+  }
+  function sicherungOeffnen() {
+    const i = document.createElement("input"); i.type = "file"; i.accept = ".fvsicherung,application/json";
+    i.onchange = async () => {
+      const f = i.files[0]; if (!f) return;
+      const pw = await sicherungsPasswort(false); if (!pw) return;
+      try { const klar = await entschluesseln(await f.text(), pw); herunterladen(f.name.replace(/\.fvsicherung$/, "") + "-entschluesselt.json", klar, "application/json"); toast("Entschlüsselt. Die neue Datei ist nicht mehr geschützt, bitte sicher aufbewahren."); }
+      catch (e) { toast(e.message); }
+    };
+    i.click();
   }
   const letzteSicherung = () => { try { return localStorage.getItem("fv_sicherung") || ""; } catch (e) { return ""; } };
 
@@ -695,9 +741,10 @@
         <div><button class="btn sec small" data-goto="aufgaben">Zur Checkliste</button></div></div>
       <div class="card stack" style="--gap:6px;margin-top:12px"><h2>Datensicherung</h2>
         <p class="mute small">Mitglieder, Anträge, Listen und alle Inhalte als eine Datei. ${ls ? "Letzte Sicherung auf diesem Gerät: " + esc(new Date(ls).toLocaleDateString("de-DE")) + "." : "Auf diesem Gerät wurde noch nie gesichert."}</p>
-        <div><button class="btn sec" id="sichJetzt">${ICON.install}Jetzt sichern</button></div></div>`;
+        <div class="row"><button class="btn sec" id="sichJetzt">${ICON.install}Verschlüsselt sichern</button><button class="btn ghost" id="sichOeffnen">Sicherung öffnen</button></div></div>`;
     $$("[data-goto]", box).forEach(b => b.onclick = () => { tab = b.dataset.goto; A.render(); });
-    $("#sichJetzt", box).onclick = async (e) => { e.target.disabled = true; try { await sicherungErstellen(); toast("Sicherung heruntergeladen"); } catch (ex) { toast(ex.message); } e.target.disabled = false; TAB.uebersicht(box); };
+    $("#sichJetzt", box).onclick = async (e) => { try { if (await sicherungErstellen()) toast("Verschlüsselte Sicherung heruntergeladen"); } catch (ex) { toast(ex.message); } TAB.uebersicht(box); };
+    $("#sichOeffnen", box).onclick = sicherungOeffnen;
   };
 
   /* ---------- Neuigkeiten ---------- */

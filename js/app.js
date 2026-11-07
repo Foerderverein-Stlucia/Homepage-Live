@@ -350,18 +350,21 @@
     const l = listen.find(x => String(x.id) === id);
     if (!l) { v.innerHTML = zurueck("mithelfen", "Alle Listen") + `<div class="card"><h2>Liste nicht gefunden</h2><p class="mute">Vielleicht wurde sie schon geschlossen.</p></div>`; return; }
     const mein = D.meine.alle();
+    const st = await D.status(mein.filter(m => m.liste_id === l.id).map(m => m.token)).catch(() => ({}));
+    mein.forEach(m => { const x = st[m.token]; if (x && m.warte && !x.warte) { m.warte = false; D.meine.weg(m.token); D.meine.add(m); toast("Gute Nachricht: Ihr seid für „" + (l.plaetze.find(p => p.id === m.platz_id) || {}).bezeichnung + "“ nachgerückt!"); } });
     const termin = I.termine.find(t => t.liste === l.id);
-    const hatPlatz = termin && l.plaetze.some(p => mein.some(m => m.platz_id === p.id));
+    const hatPlatz = termin && l.plaetze.some(p => mein.some(m => m.platz_id === p.id && !(st[m.token] && st[m.token].warte)));
     v.innerHTML = zurueck("mithelfen", "Alle Listen") + kopf("green", "Eintrageliste", esc(l.titel), l.datum ? datumLang(l.datum) + (termin && termin.von ? ", " + termin.von + " Uhr" : "") : "") +
       (l.beschreibung ? `<div class="notice" style="margin-bottom:16px">${ICON.info}<p>${esc(l.beschreibung)}</p></div>` : "") +
       `<div class="card">${l.plaetze.map(p => {
         const f = p.anzahl - p.belegt.length;
         const meineHier = mein.filter(m => m.platz_id === p.id);
         return `<div class="slot"><div style="min-width:0"><b>${esc(p.bezeichnung)}</b>${p.zeit ? `<div class="mute small tnum">${esc(p.zeit)}</div>` : ""}
-          <div class="who">${andere(p.belegt, meineHier).map(b => `<span class="chip">${esc(b.name)}</span>`).join("")}${meineHier.map(m => `<span class="chip mine">Ihr: ${esc(m.name)}</span>`).join("")}</div></div>
+          <div class="who">${andere(p.belegt, meineHier).map(b => `<span class="chip">${esc(b.name)}</span>`).join("")}${meineHier.map(m => { const x = st[m.token]; return `<span class="chip mine">Ihr: ${esc(m.name)}${x && x.warte ? " (Warteliste, Platz " + x.platz + ")" : ""}</span>`; }).join("")}</div>
+          ${(p.warte || []).length ? `<div class="mute small" style="margin-top:4px">Warteliste: ${(p.warte || []).length} ${(p.warte || []).length === 1 ? "Person" : "Personen"}</div>` : ""}</div>
           <div class="stack" style="--gap:6px;align-items:flex-end">
             <span class="cap ${f > 0 ? "free" : "full"} tnum">${f > 0 ? f + " frei" : "voll"}</span>
-            ${f > 0 ? `<button class="btn small green" data-platz="${esc(p.id)}">Eintragen</button>` : ""}
+            ${f > 0 ? `<button class="btn small green" data-platz="${esc(p.id)}">Eintragen</button>` : meineHier.length ? "" : `<button class="btn small sec" data-warte="${esc(p.id)}">Auf die Warteliste</button>`}
             ${meineHier.map(m => `<button class="btn ghost small" data-aus="${esc(m.token)}">Austragen</button>`).join("")}
           </div></div>`;
       }).join("")}</div>
@@ -372,15 +375,17 @@
     $("#teilenBtn").onclick = () => teilen(l.titel, "liste-" + l.id);
     const kb = $("#kalBtn"); if (kb) kb.onclick = () => ics(termin);
     $$("[data-platz]", v).forEach(b => b.onclick = () => eintragDialog(l, l.plaetze.find(p => String(p.id) === b.dataset.platz)));
+    $$("[data-warte]", v).forEach(b => b.onclick = () => eintragDialog(l, l.plaetze.find(p => String(p.id) === b.dataset.warte), true));
     $$("[data-aus]", v).forEach(b => b.onclick = async () => {
       b.disabled = true;
       try { await D.austragen(b.dataset.aus); D.meine.weg(b.dataset.aus); toast("Ausgetragen"); render(); } catch (e) { toast(e.message); b.disabled = false; }
     });
   };
 
-  function eintragDialog(l, p) {
+  function eintragDialog(l, p, warte) {
     const gemerkt = (() => { try { return localStorage.getItem("fv_name") || ""; } catch (e) { return ""; } })();
     sheet(`<h2>${esc(p.bezeichnung)}</h2><p class="mute">${esc(l.titel)}${p.zeit ? " · " + esc(p.zeit) : ""}</p>
+      ${warte ? `<div class="notice" style="margin-top:12px">${ICON.info}<p>Dieser Platz ist voll. Mit eurem Eintrag steht ihr auf der Warteliste und rückt automatisch nach, sobald jemand absagt. Schaut dann hier auf der Seite nach. Gebt am besten eine Telefonnummer oder E-Mail an, dann kann der Vorstand euch Bescheid geben.</p></div>` : ""}
       <form id="eintragForm" style="margin-top:16px" novalidate>
         <div class="field"><label for="e_name">Euer Name</label><input id="e_name" type="text" autocomplete="name" required minlength="2" maxlength="60" value="${esc(gemerkt)}" placeholder="z. B. Anna Krüger">
           <span class="hint">In der Liste erscheint nur „Anna K.“.</span></div>
@@ -388,7 +393,7 @@
           <span class="hint">Sieht nur der Vorstand.</span></div>
         <input class="hp" type="text" id="e_web" tabindex="-1" autocomplete="off" aria-hidden="true">
         <p class="err" id="e_err" hidden></p>
-        <button class="btn green block" type="submit">Verbindlich eintragen</button>
+        <button class="btn green block" type="submit">${warte ? "Auf die Warteliste" : "Verbindlich eintragen"}</button>
         <button class="btn sec block" type="button" data-zu>Abbrechen</button>
       </form>`, (bg, zu) => {
       const f = $("#eintragForm", bg); $("#e_name", bg).focus();
@@ -400,11 +405,11 @@
         if (name.length < 2) { err.textContent = "Bitte gebt euren Namen ein."; err.hidden = false; return; }
         const btn = f.querySelector("[type=submit]"); btn.disabled = true; btn.textContent = "Wird eingetragen …";
         try {
-          const token = await D.eintragen(p.id, name, kontakt);
-          D.meine.add({ token, platz_id: p.id, liste_id: l.id, name: D.anzeigename(name) });
+          const token = await D.eintragen(p.id, name, kontakt, warte);
+          D.meine.add({ token, platz_id: p.id, liste_id: l.id, name: D.anzeigename(name), warte: !!warte });
           try { localStorage.setItem("fv_name", name); } catch (e) {}
-          zu(); toast(I.termine.some(t => t.liste === l.id) && !PREVIEW ? "Danke! Ihr seid eingetragen. Den Termin könnt ihr unten in den Kalender legen." : "Danke! Ihr seid eingetragen."); render();
-        } catch (ex) { err.textContent = ex.message; err.hidden = false; btn.disabled = false; btn.textContent = "Verbindlich eintragen"; }
+          zu(); toast(warte ? "Ihr steht auf der Warteliste. Wird ein Platz frei, rückt ihr automatisch nach." : I.termine.some(t => t.liste === l.id) && !PREVIEW ? "Danke! Ihr seid eingetragen. Den Termin könnt ihr unten in den Kalender legen." : "Danke! Ihr seid eingetragen."); render();
+        } catch (ex) { err.textContent = ex.message; err.hidden = false; btn.disabled = false; btn.textContent = warte ? "Auf die Warteliste" : "Verbindlich eintragen"; }
       };
     });
   }
@@ -583,7 +588,8 @@
         <button class="btn block" type="submit">Antrag abschicken</button>
         <p class="mute small">Nach dem Abschicken bestätigt der Vorstand eure Mitgliedschaft per E-Mail.</p>
       </form>
-      <section class="noprint"><div class="card row" style="justify-content:space-between"><div style="flex:1 1 240px;min-width:0"><h3>Lieber auf Papier?</h3><p class="mute small">${esc(V.papierAntrag || "")} Für die Pinnwand gibt es außerdem einen Aushang mit QR-Code zum Online-Antrag.</p></div><a class="btn sec small" href="#aushang-mitglied">${ICON.qr}Aushang</a></div></section>`;
+      <section class="noprint"><div class="card row" style="justify-content:space-between"><div style="flex:1 1 240px;min-width:0"><h3>Lieber auf Papier?</h3><p class="mute small">${esc(V.papierAntrag || "")} Für die Pinnwand gibt es außerdem einen Aushang mit QR-Code zum Online-Antrag.</p></div><div class="stack" style="--gap:6px">${PREVIEW ? "" : `<button class="btn sec small" id="leerAntrag">${ICON.druck}Formular drucken</button>`}<a class="btn sec small" href="#aushang-mitglied">${ICON.qr}Aushang</a></div></div></section>`;
+    const la = $("#leerAntrag", v); if (la) la.onclick = () => antragDrucken(null);
     const f = $("#antrag");
     const eigen = $("#eigenFeld");
     const beitragBinden = () => $$('input[name="beitrag"]', f).forEach(r => r.onchange = () => { eigen.hidden = r.value !== "eigen" || !r.checked; if (!eigen.hidden) $("#a_eigen").focus(); });
@@ -639,6 +645,36 @@
     };
   };
 
+  /* Antrag zum Ausdrucken oder als PDF sichern (a = ausgefüllt, null = leeres Formular) */
+  function antragDrucken(a) {
+    const firma = !!(a && a.art === "firma"), leer = !a, E = esc;
+    const zeile = (l, w, breit) => `<tr><td class="l">${l}</td><td${breit ? ' colspan="3"' : ""}>${w ? "<b>" + E(w) + "</b>" : "&nbsp;"}</td></tr>`;
+    const iban = a ? a.iban.replace(/(.{4})/g, "$1 ").trim() : "";
+    const zeit = E(V.beitragZeitraum || "pro Jahr");
+    const html = `<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Mitgliedsantrag ${E(V.name)}</title>
+<style>body{font:11.5pt/1.4 Arial,Helvetica,sans-serif;color:#000;margin:16mm 18mm}h1{font-size:16pt;margin:6pt 0 10pt}h2{font-size:12pt;margin:14pt 0 4pt;border-bottom:1px solid #000;padding-bottom:2pt}table{border-collapse:collapse;width:100%}td{padding:5pt 4pt 5pt 0;vertical-align:bottom;border-bottom:1px dotted #777}td.l{width:34%;white-space:nowrap}.s{font-size:9.5pt}.sig{display:flex;gap:30pt;margin-top:34pt}.sig div{flex:1;border-top:1px solid #000;padding-top:3pt;font-size:9.5pt}@media print{.np{display:none}}</style></head><body>
+<p class="np"><button onclick="print()" style="font-size:14pt;padding:6pt 14pt">Drucken oder als PDF speichern</button></p>
+<b>${E(V.name)}</b><br>${E(V.kontakt.adresse || "")}
+<h1>Mitgliedsantrag${firma ? " für Firmen" : ""}</h1>
+<p>Hiermit beantrage${firma ? " ich für die unten genannte Firma" : " ich"} die Mitgliedschaft im ${E(V.name)}${/\.$/.test(V.name) ? "" : "."}</p>
+<h2>${firma ? "Firma und Ansprechpartner/in" : "Angaben zur Person"}</h2>
+<table>${firma || leer ? zeile("Firma (nur Firmen)", a && a.firma) : ""}${zeile("Vorname", a && a.vorname)}${zeile("Nachname", a && a.nachname)}${zeile("Straße, Hausnummer", a && a.strasse)}${zeile("PLZ, Ort", a ? (a.plz + " " + a.ort).trim() : "")}${zeile("E-Mail", a && a.email)}${zeile("Telefon (freiwillig)", a && a.telefon)}${!firma ? zeile("Kind / Gruppe (freiwillig)", a && a.kind) : ""}</table>
+<h2>Beitrag</h2>
+<p>Jahresbeitrag ${zeit}: ${a ? "<b>" + E(euro(a.beitrag)) + "</b>" : "______ € &nbsp;(Mindestbeitrag " + E(euro(firma ? (V.mindestbeitragFirma || 50) : V.mindestbeitrag)) + ")"}</p>
+<p>${a && a.newsletter ? "☒" : "☐"} Ich möchte den Newsletter des Vereins erhalten (freiwillig, jederzeit widerrufbar).${firma || leer ? `<br>${a && a.nennung ? "☒" : "☐"} Firmen: Der Firmenname darf auf der Homepage als Unterstützer genannt werden.` : ""}</p>
+<h2>SEPA-Lastschriftmandat</h2>
+<p class="s">Ich ermächtige den ${E(V.name)}${V.glaeubigerId ? " (Gläubiger-ID " + E(V.glaeubigerId) + ")" : ""} widerruflich, den Mitgliedsbeitrag ${zeit} von meinem Konto mittels Lastschrift einzuziehen. Zugleich weise ich mein Kreditinstitut an, die Lastschriften einzulösen. Ich kann innerhalb von acht Wochen, beginnend mit dem Belastungsdatum, die Erstattung des belasteten Betrages verlangen. Es gelten die mit meinem Kreditinstitut vereinbarten Bedingungen. Die Mandatsreferenz wird mir separat mitgeteilt.</p>
+<table>${zeile("Kontoinhaber/in", a && a.kontoinhaber)}${zeile("IBAN", iban)}${zeile("Bank / BIC", "")}</table>
+<h2>Datenschutz</h2>
+<p class="s">Die Informationen nach Art. 13 DSGVO habe ich zur Kenntnis genommen (Homepage des Vereins unter „Datenschutz“ oder beim Vorstand erhältlich).</p>
+<div class="sig"><div>Ort, Datum</div><div>Unterschrift${firma ? " (für die Firma)" : ""}</div></div>
+<p class="s" style="margin-top:14pt">${E(V.papierAntrag || "")}</p>
+</body></html>`;
+    const w = window.open("", "_blank");
+    if (!w) { toast("Bitte Pop-ups für diese Seite erlauben."); return; }
+    w.document.open(); w.document.write(html); w.document.close();
+  }
+
   function bestaetigung(v, a) {
     const iban = a.iban.replace(/(.{4})/g, "$1 ").trim();
     const maskiert = iban.slice(0, 4) + " •••• •••• •••• " + iban.slice(-7);
@@ -649,7 +685,8 @@
         <p>Beitrag: <b class="tnum">${euro(a.beitrag)}</b> ${esc(V.beitragZeitraum || "pro Jahr")}</p>${a.newsletter ? `<p>Newsletter: ja</p>` : ""}${firma ? `<p>Nennung als Unterstützer: ${a.nennung ? "ja" : "nein"}</p>` : ""}
         <p>Lastschrift von: ${esc(a.kontoinhaber)}, <span class="tnum">${maskiert}</span></p>
         <p class="mute small">${V.glaeubigerId ? "Gläubiger-ID " + esc(V.glaeubigerId) + " · " : ""}eingegangen am ${new Date().toLocaleDateString("de-DE")}</p></div>
-      <div class="row noprint" style="margin-top:16px">${PREVIEW ? "" : `<button class="btn sec" onclick="window.print()">${ICON.druck}Kopie drucken</button>`}<a class="btn" href="#start">Zur Startseite</a></div>`;
+      <div class="row noprint" style="margin-top:16px">${PREVIEW ? "" : `<button class="btn sec" id="antragDruck">${ICON.druck}Antrag zum Unterschreiben drucken</button>`}<a class="btn" href="#start">Zur Startseite</a></div>`;
+    const ad = $("#antragDruck", v); if (ad) ad.onclick = () => antragDrucken(a);
   }
 
   SEITEN.nichtgefunden = (v) => { v.innerHTML = `<div class="card"><h1>Seite nicht gefunden</h1><p class="mute" style="margin-top:8px">Diese Adresse gibt es nicht (mehr).</p><p style="margin-top:12px"><a class="btn" href="#start">Zur Startseite</a></p></div>`; };
