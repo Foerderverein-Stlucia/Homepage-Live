@@ -26,7 +26,7 @@ window.FV_INHALT = {
     mindestbeitrag: 12,
     glaeubigerId: "",                  // Gläubiger-ID der Bundesbank eintragen, sobald bekannt (wird sonst ausgeblendet)
     bank: { inhaber: "Förderverein der kath. KiTa St. Lucia Walbeck e.V.", iban: "DE89 3206 1384 2006 2290 10", bic: "GENODED1GDL", institut: "Volksbank an der Niers eG" },
-    kontakt: { email: "foerderverein.stlucia.kiga@gmail.com", adresse: "Meusweg 12 · 47608 Geldern" },
+    kontakt: { email: "foerderverein.stlucia.kiga@gmail.com", adresse: "Meusweg 12 · 47608 Geldern", instagram: "foerdervereinkitastlucia" },
     papierAntrag: "Die ausgefüllte Beitrittserklärung auf Papier könnt ihr in die verschlossene Briefbox des Fördervereins im Eingangsbereich des Kindergartens einwerfen.",
     zitat: ["Kinder sind nicht nur unsere Zukunft.", "Kinder sind ein Schatz, den es zu hüten, zu unterstützen und zu fördern gilt."],
     kitaInfo: {

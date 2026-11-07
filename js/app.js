@@ -578,9 +578,12 @@
     $("#kopierBtn").onclick = async () => { try { await navigator.clipboard.writeText(b.iban.replace(/\s/g, "")); toast("IBAN kopiert"); } catch (e) { const r = document.createRange(); r.selectNodeContents($("#ibanTxt")); getSelection().removeAllRanges(); getSelection().addRange(r); } };
   };
 
+  const IG_STANDARD = "foerdervereinkitastlucia";
+  const igName = () => { const k = V.kontakt || {}; return String(k.instagram === undefined ? IG_STANDARD : k.instagram).replace(/^.*instagram\.com\//i, "").replace(/[@\/?].*$/, "").trim(); };
   SEITEN.kontakt = (v) => {
     v.innerHTML = kopf("teal", "Kontakt", "Schreibt uns", "Fragen zur Mitgliedschaft, Ideen für Projekte oder Lust, im Vorstand mitzumachen?") +
       `<div class="card stack" style="--gap:12px"><div><p class="mute small">E-Mail</p><p style="font-weight:700"><a href="mailto:${esc(V.kontakt.email)}">${esc(V.kontakt.email)}</a></p></div>
+       ${igName() ? `<div><p class="mute small">Instagram</p><p style="font-weight:700"><a href="https://www.instagram.com/${esc(igName())}/" target="_blank" rel="noopener noreferrer">@${esc(igName())}</a></p></div>` : ""}
        <div><p class="mute small">Post</p><p>${esc(V.kontakt.adresse)}</p></div>
        <div><p class="mute small">Persönlich</p><p>Sprecht uns beim Bringen und Abholen an, oder werft einen Zettel in den Förderverein-Briefkasten im Eingangsbereich.</p></div></div>`;
   };
@@ -623,7 +626,7 @@
       <h3>Diese Webseite</h3>
       <p><b>Auf eurem Gerät</b> speichert die App, für welche Plätze ihr euch eingetragen habt, damit ihr euch wieder austragen könnt. Das bleibt auf eurem Gerät.</p>
       <p><b>Keine Tracker, anonyme Zählung:</b> Die Seite nutzt keine Analyse-Werkzeuge von Dritten, keine Cookies und lädt keine Schriften oder Skripte von fremden Servern. Um zu sehen, ob die Seite genutzt wird, zählen wir auf unserem eigenen Server nur, wie oft welche Seite aufgerufen wurde, getrennt nach Handy oder Computer und App oder Browser. Dabei wird keine Kennung gesetzt und nichts auf eurem Gerät gespeichert, und die Zahlen lassen sich keiner Person zuordnen (Art. 6 Abs. 1 lit. f DSGVO, Interesse am Betrieb und an der Verbesserung der Seite).</p>
-      <p>Bei Fragen zu diesen Informationen und zum Datenschutz wendet euch an uns unter ${esc(V.kontakt.email)}.</p></div>`;
+      ${igName() ? `<p>Auf unserer Kontaktseite verlinken wir unser Instagram-Profil. Beim Anklicken verlasst ihr diese App; für die Datenverarbeitung auf Instagram ist Meta verantwortlich. Ohne Klick werden keine Daten an Instagram übertragen.</p>` : ""}<p>Bei Fragen zu diesen Informationen und zum Datenschutz wendet euch an uns unter ${esc(V.kontakt.email)}.</p></div>`;
   };
 
   /* ---------- Mitgliedsantrag ---------- */

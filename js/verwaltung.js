@@ -522,6 +522,7 @@
           <p class="mute small">Die ersten beiden Einträge erscheinen im Impressum als Vertretung nach § 26 BGB, der erste als verantwortlich für den Inhalt.</p></div>
         <div class="card stack" style="--gap:14px"><h2>Kontakt</h2>
           ${feld("v_mail", "E-Mail", k.email, { k: "kontakt.email", type: "email" })}
+          ${feld("v_ig", "Instagram-Name (ohne @, leer = ausblenden)", k.instagram === undefined ? "foerdervereinkitastlucia" : k.instagram, { k: "kontakt.instagram", ph: "foerdervereinkitastlucia" })}
           ${feld("v_adr", "Anschrift (auch fürs Impressum)", k.adresse, { k: "kontakt.adresse" })}
           ${feld("v_papier", "Hinweis zum Papierantrag", V.papierAntrag, { k: "papierAntrag", type: "textarea", rows: 2 })}</div>
         <div class="card stack" style="--gap:14px"><h2>Bankverbindung</h2>
