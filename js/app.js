@@ -163,6 +163,7 @@
       ${MEHR.filter(m => m.id !== "galerie" || (I.galerie || []).length).map(m => `<a href="#${m.id}" data-zu style="--dot:var(--${m.f})"><span class="d"></span><span>${m.t}<small>${m.s}</small></span></a>`).join("")}
       <hr>
       ${installierbar() && installEvt ? `<button id="instBtn"><span class="d" style="--dot:var(--green)"></span><span>App installieren<small>Auf den Startbildschirm legen</small></span></button>` : ""}
+      ${Push.moeglich() ? `<button id="pushHilfe"><span class="d" style="--dot:var(--pink)"></span><span>Benachrichtigungen<small>Hinweise und Erinnerungen aufs Handy</small></span></button>` : ""}
       ${!PREVIEW ? `<button id="instHilfe"><span class="d" style="--dot:var(--green)"></span><span>App aufs Handy holen<small>Kurze Anleitung für iPhone und Android</small></span></button>` : ""}
       <button id="themeBtn"><span class="d" style="--dot:var(--ink)"></span><span>Darstellung: ${theme === "dark" ? "dunkel" : theme === "light" ? "hell" : "wie Gerät"}<small>Antippen zum Wechseln</small></span></button>
       <a href="#impressum" data-zu><span class="d" style="--dot:var(--line)"></span>Impressum</a>
@@ -170,6 +171,7 @@
       <a href="#verwaltung" data-zu><span class="d" style="--dot:var(--line)"></span><span>Verwaltung<small>Nur für den Vorstand</small></span></a>
     </nav>`, (bg, zu) => {
       const ib = $("#instBtn", bg); if (ib) ib.onclick = () => { zu(); installieren(); };
+      const ph = $("#pushHilfe", bg); if (ph) ph.onclick = () => { zu(); pushDialog(); };
       const ih = $("#instHilfe", bg); if (ih) ih.onclick = () => { zu(); installAnleitung(istIOS ? "ios" : "android"); };
       $("#themeBtn", bg).onclick = () => {
         const next = theme === "" ? "light" : theme === "light" ? "dark" : "";
@@ -198,6 +200,44 @@
         <div class="card" style="box-shadow:none"><h3>iPhone und iPad</h3>${ios}</div>
         <div class="card" style="box-shadow:none"><h3>Android</h3>${and}<p class="mute small" style="margin-top:8px">Bei Samsung Internet oder Firefox heißt der Punkt ähnlich, meist im Menü unter „Hinzufügen zu“.</p></div>
       </div><button class="btn block" data-zu>Verstanden</button>`);
+  }
+
+  /* ---------- Benachrichtigungen (Web Push) ---------- */
+  const Push = {
+    moeglich() { return !PREVIEW && D.live && "serviceWorker" in navigator && "PushManager" in window && "Notification" in window && location.protocol === "https:"; },
+    brauchtApp() { return istIOS && !standalone(); },
+    async abo() { try { const r = await Promise.race([navigator.serviceWorker.ready, new Promise((_, no) => setTimeout(no, 2500))]); return await r.pushManager.getSubscription(); } catch (e) { return null; } },
+    tokens() { return D.meine.alle().map(m => m.token).filter(Boolean); },
+    async sync() { try { const a = await Push.abo(); if (a && Notification.permission === "granted") await D.pushAnmelden(a.toJSON(), Push.tokens()); } catch (e) {} },
+    async an() {
+      const erlaubnis = await Notification.requestPermission();
+      if (erlaubnis !== "granted") throw new Error("Benachrichtigungen sind für diese Seite blockiert. Das lässt sich in den Einstellungen des Geräts oder Browsers ändern.");
+      const key = await D.pushSchluessel(); if (!key) throw new Error("Benachrichtigungen sind noch nicht eingerichtet. Bitte später noch einmal versuchen.");
+      const pad = "=".repeat((4 - key.length % 4) % 4), raw = atob((key + pad).replace(/-/g, "+").replace(/_/g, "/"));
+      const reg = await navigator.serviceWorker.ready;
+      const sub = (await reg.pushManager.getSubscription()) || await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: Uint8Array.from(raw, c => c.charCodeAt(0)) });
+      await D.pushAnmelden(sub.toJSON(), Push.tokens());
+    },
+    async aus() { const a = await Push.abo(); if (a) { const e = a.endpoint; await a.unsubscribe(); try { await D.pushAbmelden(e); } catch (x) {} } }
+  };
+  async function pushDialog() {
+    const abo = Push.moeglich() ? await Push.abo() : null, an = !!abo && Notification.permission === "granted";
+    const nein = !Push.moeglich() ? "Benachrichtigungen sind in dieser Ansicht nicht verfügbar." : Push.brauchtApp() ? "Auf dem iPhone und iPad gehen Benachrichtigungen nur, wenn die Seite als App auf dem Home-Bildschirm liegt. Legt sie zuerst dort ab und öffnet sie dann von dort." : "";
+    sheet(`<h2>Benachrichtigungen</h2>
+      <p class="mute" style="margin-top:4px">Wir schicken euch nur, was wirklich wichtig ist:</p>
+      <ul style="margin:10px 0 12px;padding-left:1.2em"><li>Mitteilungen des Vorstands, zum Beispiel zu Festen und Aktionen</li><li>Ein Hinweis, wenn ihr von der Warteliste nachgerückt seid</li><li>Eine Erinnerung am Vortag eures Helferdienstes</li></ul>
+      <p class="mute small">Gespeichert wird nur eine anonyme Adresse eures Geräts und die geheime Kennung eurer Einträge, keine Namen und keine E-Mail-Adressen. Ihr könnt es jederzeit wieder ausschalten.</p>
+      ${nein ? `<div class="notice" style="margin:12px 0">${ICON.info}<p>${nein}</p></div>${Push.moeglich() && Push.brauchtApp() ? `<button class="btn sec block" data-anl>So legt ihr die App auf den Home-Bildschirm</button>` : ""}` : `<p class="err" id="pushErr" hidden></p>
+      <button class="btn ${an ? "sec" : "green"} block" id="pushBtn" style="margin-top:12px">${an ? "Benachrichtigungen ausschalten" : "Benachrichtigungen einschalten"}</button>`}
+      <button class="btn ghost block" data-zu style="margin-top:6px">Schließen</button>`, (bg, zu) => {
+      const al = $("[data-anl]", bg); if (al) al.onclick = () => { zu(); installAnleitung("ios"); };
+      const b = $("#pushBtn", bg); if (!b) return;
+      b.onclick = async () => {
+        b.disabled = true;
+        try { if (an) { await Push.aus(); toast("Benachrichtigungen aus"); } else { await Push.an(); toast("Benachrichtigungen sind an"); } zu(); }
+        catch (e) { const er = $("#pushErr", bg); er.textContent = e.message; er.hidden = false; b.disabled = false; }
+      };
+    });
   }
 
   /* ---------- Router ---------- */
@@ -368,12 +408,14 @@
             ${meineHier.map(m => `<button class="btn ghost small" data-aus="${esc(m.token)}">Austragen</button>`).join("")}
           </div></div>`;
       }).join("")}</div>
+      ${Push.moeglich() && l.plaetze.some(p => mein.some(m => m.platz_id === p.id)) && Notification.permission !== "denied" && !(await Push.abo()) ? `<div class="card row noprint" style="margin-top:16px;justify-content:space-between"><div style="flex:1 1 220px;min-width:0"><b>Erinnerung aufs Handy?</b><div class="mute small">Am Vortag und falls ihr nachrückt.</div></div><button class="btn small" id="pushAnbieten">Einschalten</button></div>` : ""}
       <div class="row noprint" style="margin-top:16px">
         <a class="btn sec small" href="#aushang-${esc(l.id)}">${ICON.qr}Aushang mit QR-Code</a>
         <button class="btn sec small" id="teilenBtn">${ICON.teilen}Liste teilen</button>
         ${hatPlatz && !PREVIEW ? `<button class="btn small" id="kalBtn">${ICON.kal}Termin in meinen Kalender</button>` : ""}</div>`;
     $("#teilenBtn").onclick = () => teilen(l.titel, "liste-" + l.id);
     const kb = $("#kalBtn"); if (kb) kb.onclick = () => ics(termin);
+    const pa = $("#pushAnbieten", v); if (pa) pa.onclick = () => pushDialog();
     $$("[data-platz]", v).forEach(b => b.onclick = () => eintragDialog(l, l.plaetze.find(p => String(p.id) === b.dataset.platz)));
     $$("[data-warte]", v).forEach(b => b.onclick = () => eintragDialog(l, l.plaetze.find(p => String(p.id) === b.dataset.warte), true));
     $$("[data-aus]", v).forEach(b => b.onclick = async () => {
@@ -407,6 +449,7 @@
         try {
           const token = await D.eintragen(p.id, name, kontakt, warte);
           D.meine.add({ token, platz_id: p.id, liste_id: l.id, name: D.anzeigename(name), warte: !!warte });
+          if (Push.moeglich()) Push.sync();
           try { localStorage.setItem("fv_name", name); } catch (e) {}
           zu(); toast(warte ? "Ihr steht auf der Warteliste. Wird ein Platz frei, rückt ihr automatisch nach." : I.termine.some(t => t.liste === l.id) && !PREVIEW ? "Danke! Ihr seid eingetragen. Den Termin könnt ihr unten in den Kalender legen." : "Danke! Ihr seid eingetragen."); render();
         } catch (ex) { err.textContent = ex.message; err.hidden = false; btn.disabled = false; btn.textContent = warte ? "Auf die Warteliste" : "Verbindlich eintragen"; }
@@ -539,6 +582,8 @@
       <p>Ihr habt das Recht, euch bei der Aufsichtsbehörde zu beschweren: Der Landesbeauftragte für Datenschutz und Informationsfreiheit Nordrhein-Westfalen, Postfach 200444, 40102 Düsseldorf, Telefon 0211 / 38424-0, poststelle@ldi.nrw.de.</p>
       <h3>Erforderlichkeit der Datenbereitstellung</h3>
       <p>Um die Mitgliedschaft in unserem Förderverein durchführen zu können, benötigen wir eure persönlichen Daten. Ohne diese Daten kann unser Förderverein seinen gesetzlichen Verpflichtungen nicht nachkommen. Wir verwenden die im Rahmen der Mitgliedschaft bereitgestellten Daten nur zu den oben beschriebenen Zwecken. Auf keinen Fall werden sie für eine automatisierte Entscheidung im Einzelfall oder ein Profiling verwendet.</p>
+      <h3>Benachrichtigungen (Push)</h3>
+      <p>Wenn ihr Benachrichtigungen einschaltet, speichern wir eine anonyme Adresse eures Geräts, die euer Browser oder Betriebssystem erzeugt, sowie die geheime Kennung eurer Eintragungen in den Helferlisten. Name, E-Mail-Adresse oder Telefonnummer werden dafür nicht gespeichert. Wir nutzen das für Mitteilungen des Vorstands, für den Hinweis beim Nachrücken von der Warteliste und für die Erinnerung am Vortag eures Helferdienstes (Art. 6 Abs. 1 lit. a DSGVO, Einwilligung). Die Nachrichten werden über den Push-Dienst des Geräteherstellers zugestellt (Apple oder Google, USA; bei Firefox Mozilla). Ihr könnt die Einwilligung jederzeit im Menü unter „Benachrichtigungen“ oder in den Geräteeinstellungen widerrufen.</p>
       <h3>Diese Webseite</h3>
       <p><b>Auf eurem Gerät</b> speichert die App, für welche Plätze ihr euch eingetragen habt, damit ihr euch wieder austragen könnt. Das bleibt auf eurem Gerät.</p>
       <p><b>Keine Tracker, anonyme Zählung:</b> Die Seite nutzt keine Analyse-Werkzeuge von Dritten, keine Cookies und lädt keine Schriften oder Skripte von fremden Servern. Um zu sehen, ob die Seite genutzt wird, zählen wir auf unserem eigenen Server nur, wie oft welche Seite aufgerufen wurde, getrennt nach Handy oder Computer und App oder Browser. Dabei wird keine Kennung gesetzt und nichts auf eurem Gerät gespeichert, und die Zahlen lassen sich keiner Person zuordnen (Art. 6 Abs. 1 lit. f DSGVO, Interesse am Betrieb und an der Verbesserung der Seite).</p>
@@ -711,6 +756,7 @@
     try { uebernehmen(await D.inhalteLaden()); } catch (e) { console.warn(e); }
     shell();
     render();
+    if (Push.moeglich()) setTimeout(() => Push.sync(), 3000);
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot); else boot();
   if (!PREVIEW && "serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").catch(() => {});

@@ -14,7 +14,7 @@
   const PREVIEW = !!window.FV_PREVIEW;
   const FARBEN = [["pink", "Pink"], ["blue", "Blau"], ["green", "Grün"], ["orange", "Orange"], ["purple", "Lila"], ["yellow", "Gelb"], ["red", "Rot"], ["teal", "Petrol"]];
   const SYMBOLE = [["stern", "Stern"], ["rutsche", "Rutsche"], ["wasser", "Wasser"], ["reck", "Turnen"], ["baum", "Baum/Garten"], ["steine", "Steine"], ["wippe", "Wippe"], ["luft", "Luft"], ["buch", "Buch"], ["theater", "Theater"], ["musik", "Musik"], ["kueche", "Küche"], ["ausflug", "Ausflug"], ["herz", "Herz"]];
-  const TABS = [["uebersicht", "Übersicht"], ["antraege", "Anträge"], ["mitglieder", "Mitglieder"], ["listen", "Eintragelisten"], ["termine", "Termine"], ["neuigkeiten", "Neuigkeiten"], ["projekte", "Projekte"], ["galerie", "Galerie"], ["aufgaben", "Checkliste"], ["statistik", "Statistik"], ["verein", "Vereinsdaten"], ["zugaenge", "Zugänge"]];
+  const TABS = [["uebersicht", "Übersicht"], ["antraege", "Anträge"], ["mitglieder", "Mitglieder"], ["listen", "Eintragelisten"], ["termine", "Termine"], ["neuigkeiten", "Neuigkeiten"], ["projekte", "Projekte"], ["galerie", "Galerie"], ["aufgaben", "Checkliste"], ["mitteilungen", "Mitteilungen"], ["statistik", "Statistik"], ["verein", "Vereinsdaten"], ["zugaenge", "Zugänge"]];
   let tab = "uebersicht";
 
   /* ---------- kleine Helfer ---------- */
@@ -863,6 +863,30 @@
     };
     $("#aNeu", box).onclick = () => editor(null);
     $$("[data-ed]", box).forEach(b => b.onclick = () => editor(arr.find(x => x.id === b.dataset.ed)));
+  };
+
+  /* ---------- Mitteilungen (Push) ---------- */
+  TAB.mitteilungen = async (box) => {
+    let n = null; try { n = await D.pushAnzahl(); } catch (e) {}
+    box.innerHTML = `<h1 style="font-size:1.6rem;margin-bottom:8px">Mitteilungen</h1>
+      <p class="mute" style="margin-bottom:12px">Eine Nachricht aufs Handy aller, die Benachrichtigungen eingeschaltet haben. ${n === null ? "" : `Aktuell sind das <b>${n}</b> Geräte.`} Die Zustellung dauert bis zu einer Minute.</p>
+      ${D.live ? "" : `<div class="notice" style="margin-bottom:12px">${ICON.info}<p>Im Vorschau-Modus lassen sich keine Nachrichten senden.</p></div>`}
+      <form id="mf2" class="card stack" style="--gap:10px" novalidate>
+        ${feld("p_titel", "Überschrift (kurz)", "", { k: "titel", attrs: 'maxlength="80"' })}
+        ${feld("p_text", "Text", "", { k: "text", type: "textarea", rows: 3, attrs: 'maxlength="200"' })}
+        ${feld("p_url", "Beim Antippen öffnen", "", { k: "url", type: "select", opts: [["", "Startseite"], ["#termine", "Termine"], ["#mithelfen", "Mithelfen und Listen"], ["#galerie", "Eindrücke"], ["#projekte", "Projekte"]] })}
+        <p class="err" id="p_err" hidden></p>
+        <button class="btn" type="submit">An alle senden</button><div id="pBox"></div></form>
+      <div class="card stack" style="--gap:6px;margin-top:12px"><h2>Automatisch</h2>
+        <ul style="margin:0;padding-left:1.2em"><li>Wer von der Warteliste nachrückt, bekommt sofort einen Hinweis.</li><li>Wer sich in einer Liste eingetragen hat, bekommt am Vortag um 17 oder 18 Uhr eine Erinnerung.</li></ul>
+        <p class="mute small">Beides geht nur an Geräte, die Benachrichtigungen eingeschaltet haben. Es werden keine Namen oder Kontaktdaten verwendet.</p></div>`;
+    $("#mf2", box).onsubmit = (e) => {
+      e.preventDefault(); const er = $("#p_err", box); er.hidden = true; const d = datenSammeln(box);
+      if (d.titel.length < 3) { er.textContent = "Bitte eine Überschrift eintragen."; er.hidden = false; return; }
+      sicherheitsfrage($("#pBox", box), `<b>Jetzt an ${n === null ? "alle" : n + " Geräte"} senden?</b><br>„${esc(d.titel)}“. Eine abgeschickte Nachricht lässt sich nicht zurückholen.`, "Senden", async () => {
+        const an = await D.pushSenden(d.titel, d.text, d.url); toast("Wird zugestellt an " + an + " Geräte"); TAB.mitteilungen(box);
+      });
+    };
   };
 
   /* ---------- Statistik ---------- */

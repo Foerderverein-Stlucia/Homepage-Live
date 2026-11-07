@@ -121,6 +121,7 @@
     async inhalteLaden() { return store.get("inhalte", null); },
     async inhaltSpeichern(k, wert) { const x = store.get("inhalte", {}) || {}; x[k] = wert; store.set("inhalte", x); },
     async inhaltLesen(k) { const x = store.get("inhalte", {}) || {}; return x[k] ?? null; },
+    async pushSchluessel() { return null; }, async pushAnmelden() {}, async pushAbmelden() {}, async pushAnzahl() { return 0; }, async pushSenden() { throw new Error("Benachrichtigungen gibt es nur in der echten App."); },
     async aufruf(seite, geraet, app) { const z = store.get("stat", []) || []; const tag = new Date().toISOString().slice(0, 10); let e = z.find(r => r.tag === tag && r.seite === seite && r.geraet === geraet && r.app === app); if (!e) z.push(e = { tag, seite, geraet, app, anzahl: 0 }); e.anzahl++; store.set("stat", z); },
     async statistik(tage) { return statAus(store.get("stat", []) || [], tage); },
     async bildHochladen(blob) {
@@ -260,6 +261,11 @@
       } catch (e) { return store.get("inhalteCache", null); }
       finally { clearTimeout(t); }
     },
+    async pushSchluessel() { return await req("/rest/v1/rpc/push_schluessel", { method: "POST", body: {} }); },
+    async pushAnmelden(sub, tokens) { await req("/rest/v1/rpc/push_anmelden", { method: "POST", body: { p_endpoint: sub.endpoint, p_p256dh: sub.keys.p256dh, p_auth: sub.keys.auth, p_tokens: tokens || [] } }); },
+    async pushAbmelden(endpoint) { await req("/rest/v1/rpc/push_abmelden", { method: "POST", body: { p_endpoint: endpoint } }); },
+    async pushAnzahl() { return await req("/rest/v1/rpc/push_anzahl", { method: "POST", body: {}, auth: true }); },
+    async pushSenden(titel, text, url) { return await req("/rest/v1/rpc/push_senden", { method: "POST", body: { p_titel: titel, p_text: text || "", p_url: url || "" }, auth: true }); },
     async aufruf(seite, geraet, app) {
       try { await fetch(base + "/rest/v1/rpc/aufruf", { method: "POST", keepalive: true, headers: { apikey: C.supabaseKey, "Content-Type": "application/json" }, body: JSON.stringify({ p_seite: seite, p_geraet: geraet, p_app: app }) }); } catch (e) {}
     },

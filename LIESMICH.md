@@ -88,6 +88,7 @@ Voraussetzung: `supabase/erweiterung-verwaltung.sql` einmal im SQL-Editor ausfü
 - **Warteliste**: Ist ein Platz voll, können sich Eltern auf die Warteliste setzen und rücken automatisch nach (Datenbank-Trigger). Der Vorstand sieht „Warteliste“ bzw. „nachgerückt am …“ mit Kontaktdaten. Datenbank: `supabase/erweiterung-warteliste.sql`.
 - **Sicherung** ist verschlüsselt (Endung `.fvsicherung`, AES-GCM, Passwort bleibt im Kopf des Vorstands). Öffnen: Verwaltung → Übersicht → „Sicherung öffnen“.
 - **Papierantrag**: leeres Formular unter „Mitglied werden“ → „Formular drucken“. Nach dem Online-Antrag gibt es den ausgefüllten Antrag zum Unterschreiben (Drucken oder als PDF speichern).
+- **Push-Benachrichtigungen**: Menü → „Benachrichtigungen“ (Eltern), Verwaltung → „Mitteilungen“ (Vorstand). Automatisch: Hinweis bei Nachrücken und Erinnerung am Vortag des Helferdienstes. Technik: Tabellen `push_*`, Edge Function `push-senden` (Quelltext in `supabase/functions/push-senden`), Zeitpläne per pg_cron (jede Minute prüfen, täglich 16:00 UTC Erinnerungen). Die Schlüssel (VAPID) erzeugt die Funktion selbst beim ersten Lauf und legt sie in der Tabelle `push_config` ab. Auf dem iPhone nur, wenn die Seite als App auf dem Home-Bildschirm liegt. Datenbank: `supabase/erweiterung-push.sql`.
 - Datenbank: `supabase/erweiterung-inhalte.sql` (bereits eingespielt).
 
 ## 5. Änderungen am Programm veröffentlichen
