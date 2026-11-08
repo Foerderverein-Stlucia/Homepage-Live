@@ -14,7 +14,7 @@
   const PREVIEW = !!window.FV_PREVIEW;
   const FARBEN = [["pink", "Pink"], ["blue", "Blau"], ["green", "Grün"], ["orange", "Orange"], ["purple", "Lila"], ["yellow", "Gelb"], ["red", "Rot"], ["teal", "Petrol"]];
   const SYMBOLE = [["stern", "Stern"], ["rutsche", "Rutsche"], ["wasser", "Wasser"], ["reck", "Turnen"], ["baum", "Baum/Garten"], ["steine", "Steine"], ["wippe", "Wippe"], ["luft", "Luft"], ["buch", "Buch"], ["theater", "Theater"], ["musik", "Musik"], ["kueche", "Küche"], ["ausflug", "Ausflug"], ["herz", "Herz"]];
-  const TABS = [["uebersicht", "Übersicht"], ["antraege", "Anträge"], ["mitglieder", "Mitglieder"], ["listen", "Eintragelisten"], ["termine", "Termine"], ["neuigkeiten", "Neuigkeiten"], ["projekte", "Projekte"], ["galerie", "Galerie"], ["aufgaben", "Checkliste"], ["mitteilungen", "Mitteilungen"], ["statistik", "Statistik"], ["verein", "Vereinsdaten"], ["zugaenge", "Zugänge"]];
+  const TABS = [["uebersicht", "Übersicht"], ["antraege", "Anträge"], ["mitglieder", "Mitglieder"], ["listen", "Eintragelisten"], ["termine", "Termine"], ["checklisten", "Termin-Checklisten"], ["neuigkeiten", "Neuigkeiten"], ["projekte", "Projekte"], ["galerie", "Galerie"], ["aufgaben", "Jahresplan"], ["mitteilungen", "Mitteilungen"], ["statistik", "Statistik"], ["verein", "Vereinsdaten"], ["zugaenge", "Zugänge"]];
   let tab = "uebersicht";
 
   /* ---------- kleine Helfer ---------- */
@@ -871,7 +871,7 @@
     let arr = aufgabenMitNeuem(await D.inhaltLesen("aufgaben"));
     arr = arr.slice().sort((a, b) => +a.monat - +b.monat);
     const speichern = async (neuArr) => { await D.inhaltSpeichern("aufgaben", neuArr); TAB.aufgaben(box); };
-    box.innerHTML = `<div class="row" style="justify-content:space-between;margin-bottom:8px"><h1 style="font-size:1.6rem">Checkliste ${jahr}</h1><button class="btn small" id="aNeu">${ICON.plus}Aufgabe</button></div>
+    box.innerHTML = `<div class="row" style="justify-content:space-between;margin-bottom:8px"><h1 style="font-size:1.6rem">Jahresplan ${jahr}</h1><button class="btn small" id="aNeu">${ICON.plus}Aufgabe</button></div>
       <p class="mute" style="margin-bottom:12px">Wiederkehrende Aufgaben im Vereinsjahr. Die Monate sind Vorschläge, bitte nach eurer Satzung anpassen. Jedes Jahr beginnt die Liste automatisch neu. Nur der Vorstand sieht sie.</p>
       <div class="list">${arr.map(a => `<div class="card row" style="justify-content:space-between;--dot:var(--${a.erledigt === jahr ? "green" : "orange"})"><label class="check" style="flex:1 1 220px;min-width:0"><input type="checkbox" data-done="${esc(a.id)}" ${a.erledigt === jahr ? "checked" : ""}><span><b>${esc(a.titel)}</b><br><span class="mute small">bis ${MONATE[(+a.monat || 1) - 1]}${a.notiz ? " · " + esc(a.notiz) : ""}</span></span></label><button class="btn ghost small" data-ed="${esc(a.id)}">Bearbeiten</button></div>`).join("")}</div>`;
     $$("[data-done]", box).forEach(c => c.onchange = async () => { const x = arr.find(a => a.id === c.dataset.done); x.erledigt = c.checked ? jahr : null; try { await speichern(arr); } catch (e) { toast(e.message); } });
@@ -897,6 +897,75 @@
     };
     $("#aNeu", box).onclick = () => editor(null);
     $$("[data-ed]", box).forEach(b => b.onclick = () => editor(arr.find(x => x.id === b.dataset.ed)));
+  };
+
+  /* ---------- Checklisten zu Terminen (nur Vorstand) ---------- */
+  const CL_START = { wm26a: [
+    { t: "Abstimmung mit Elternbeirat, ob die Kita vertreten sein soll", ok: true },
+    { t: "Kontakt mit dem Schloss aufnehmen (Juli/August): Eintrittsbändchen und Material (Tische usw.) vor Ort bestellen", ok: true, n: "Wir bekommen einen 3x3m-Pavillon mit Seitenwänden, Tische und Bänke (Anzahl noch klären), 10 Tagesbändchen." },
+    { t: "Helferlisten für die Standbetreuung in der Kita aufhängen (Herbst), mit Name und Telefonnummer zum Einrichten der WhatsApp-Gruppe", ok: true },
+    { t: "Vorhandenes Material für Verkauf, Preise und Glücksrad prüfen: Was ist noch da, was ist brauchbar?" },
+    { t: "WhatsApp-Gruppe für Helfer einrichten, um zum Beispiel die Übergabe der Bändchen zu koordinieren" },
+    { t: "Utensilien für den Aufbau des Standes zum Schloss bringen", sub: ["Glücksrad", "Zubehör Glitzertattoos", "Verkaufsmaterial", "Kabeltrommel / Mehrfachsteckdose", "Lichterkette", "Stehlampe", "Tischdecke", "Klebeband, Schere, Seitenschneider", "Preisschilder und Preislisten", "Kugelschreiber / Edding", "Heizofen (Gas)", "Feuerlöscher", "Kinderbierzeltgarnitur", "Beachflag", "Anmeldeflyer", "Spendendino"] },
+    { t: "Kasse zum Schloss bringen und abends wieder mitnehmen" } ] };
+  const clId = () => "c" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+  const clNorm = (arr) => (arr || []).map(x => ({ id: x.id || clId(), t: x.t, wer: x.wer || "", n: x.n || "", ok: !!x.ok, sub: (x.sub || []).map(u => typeof u === "string" ? { id: clId(), t: u, ok: false } : { id: u.id || clId(), t: u.t, ok: !!u.ok }) }));
+  let clWahl = "";
+  TAB.checklisten = async (box) => {
+    let alle = await D.inhaltLesen("checklisten");
+    if (!alle || typeof alle !== "object" || Array.isArray(alle)) alle = {};
+    if (!Object.keys(alle).length) alle = Object.fromEntries(Object.entries(CL_START).map(([k, v]) => [k, clNorm(v)]));
+    const termine = (IN().termine || []).slice().sort((a, b) => String(a.datum).localeCompare(String(b.datum)));
+    const h = A.heute(), kommend = termine.filter(t => A.dt(t.datum) >= h), alt = termine.filter(t => A.dt(t.datum) < h).reverse();
+    if (!termine.length) { box.innerHTML = `<h1 style="font-size:1.6rem">Termin-Checklisten</h1><div class="card"><p class="mute">Bitte zuerst einen Termin anlegen.</p></div>`; return; }
+    if (!termine.some(t => t.id === clWahl)) clWahl = (kommend.find(x => (alle[x.id] || []).length) || kommend[0] || alt[0]).id;
+    const t = termine.find(x => x.id === clWahl), pts = clNorm(alle[clWahl]);
+    const zaehl = (a) => { let g = 0, o = 0; a.forEach(x => { if (x.sub.length) { g += x.sub.length; o += x.sub.filter(u => u.ok).length; } else { g++; if (x.ok) o++; } }); return [o, g]; };
+    const speichern = async (neu) => { alle[clWahl] = neu; await D.inhaltSpeichern("checklisten", alle); TAB.checklisten(box); };
+    const label = (x) => `${datumLang(x.datum)} · ${x.titel}${(alle[x.id] || []).length ? " (" + zaehl(clNorm(alle[x.id])).join("/") + ")" : ""}`;
+    const [o, g] = zaehl(pts);
+    box.innerHTML = `<div class="row" style="justify-content:space-between;margin-bottom:8px"><h1 style="font-size:1.6rem">Termin-Checklisten</h1><button class="btn small" id="cNeu">${ICON.plus}Punkt</button></div>
+      <p class="mute" style="margin-bottom:12px">Alles zur Vorbereitung eines Termins an einem Ort: Aufgaben, wer sie übernimmt, und Packlisten. Nur der Vorstand sieht das.</p>
+      <div class="field"><label for="cTermin">Termin</label><select id="cTermin">${kommend.length ? `<optgroup label="Kommende">${kommend.map(x => `<option value="${esc(x.id)}" ${x.id === clWahl ? "selected" : ""}>${esc(label(x))}</option>`).join("")}</optgroup>` : ""}${alt.length ? `<optgroup label="Vergangene">${alt.map(x => `<option value="${esc(x.id)}" ${x.id === clWahl ? "selected" : ""}>${esc(label(x))}</option>`).join("")}</optgroup>` : ""}</select></div>
+      ${g ? `<p class="small" style="margin:6px 0"><b>${o} von ${g}</b> erledigt</p><span class="fort" role="img" aria-label="${o} von ${g} erledigt"><i style="width:${Math.round(o / g * 100)}%"></i></span>` : ""}
+      <div class="list" style="margin-top:12px">${pts.map((x, i) => `<div class="card" style="--dot:var(--${x.ok || (x.sub.length && x.sub.every(u => u.ok)) ? "green" : "orange"})">
+        <div class="row" style="justify-content:space-between;align-items:flex-start;gap:8px">
+          <label class="check" style="flex:1 1 200px;min-width:0;display:flex;gap:10px;align-items:flex-start">${x.sub.length ? "" : `<input type="checkbox" data-c="${i}" ${x.ok ? "checked" : ""} style="margin-top:4px">`}<span style="${x.ok ? "text-decoration:line-through;opacity:.65" : ""}"><b>${esc(x.t)}</b></span></label>
+          <span class="row" style="gap:2px;flex:none"><button class="iconbtn" data-up="${i}" aria-label="Nach oben" ${i ? "" : "disabled"}>↑</button><button class="iconbtn" data-dn="${i}" aria-label="Nach unten" ${i < pts.length - 1 ? "" : "disabled"}>↓</button><button class="btn sec small" data-e="${i}">Bearbeiten</button></span></div>
+        ${x.wer ? `<p class="small" style="margin-top:6px"><span class="chip c">Wer: ${esc(x.wer)}</span></p>` : ""}
+        ${x.n ? `<p class="mute small" style="margin-top:6px">${esc(x.n)}</p>` : ""}
+        ${x.sub.length ? `<div style="margin-top:8px;display:grid;gap:4px">${x.sub.map((u, j) => `<label class="check" style="display:flex;gap:10px;align-items:center;padding-left:6px"><input type="checkbox" data-s="${i}.${j}" ${u.ok ? "checked" : ""}><span style="${u.ok ? "text-decoration:line-through;opacity:.65" : ""}">${esc(u.t)}</span></label>`).join("")}</div>` : ""}</div>`).join("") || `<div class="card"><p class="mute">Für diesen Termin gibt es noch keine Punkte. Fügt Punkte hinzu oder übernehmt die Liste eines anderen Termins.</p></div>`}</div>
+      ${termine.some(x => x.id !== clWahl && (alle[x.id] || []).length) ? `<div class="card" style="margin-top:16px"><h3>Liste von einem anderen Termin übernehmen</h3><p class="mute small" style="margin:4px 0 8px">Kopiert alle Punkte ohne Haken und ohne Namen, zum Beispiel fürs nächste Jahr oder den zweiten Tag.</p><div class="row"><select id="cVon" aria-label="Von Termin">${termine.filter(x => x.id !== clWahl && (alle[x.id] || []).length).map(x => `<option value="${esc(x.id)}">${esc(label(x))}</option>`).join("")}</select><button class="btn sec small" id="cKopie">Übernehmen</button></div></div>` : ""}`;
+    $("#cTermin", box).onchange = (e) => { clWahl = e.target.value; TAB.checklisten(box); };
+    const wegen = async (fn) => { try { const neu = clNorm(pts); fn(neu); await speichern(neu); } catch (e) { toast(e.message); } };
+    $$("[data-c]", box).forEach(c => c.onchange = () => wegen(n => { n[+c.dataset.c].ok = c.checked; }));
+    $$("[data-s]", box).forEach(c => c.onchange = () => wegen(n => { const [i, j] = c.dataset.s.split(".").map(Number); n[i].sub[j].ok = c.checked; }));
+    $$("[data-up]", box).forEach(b => b.onclick = () => wegen(n => { const i = +b.dataset.up; [n[i - 1], n[i]] = [n[i], n[i - 1]]; }));
+    $$("[data-dn]", box).forEach(b => b.onclick = () => wegen(n => { const i = +b.dataset.dn; [n[i + 1], n[i]] = [n[i], n[i + 1]]; }));
+    const k = $("#cKopie", box); if (k) k.onclick = () => wegen(n => { clNorm(alle[$("#cVon", box).value]).forEach(x => n.push({ ...x, id: clId(), ok: false, wer: "", sub: x.sub.map(u => ({ ...u, id: clId(), ok: false })) })); });
+    const editor = (idx) => {
+      const neu = idx === null, x = neu ? { t: "", wer: "", n: "", sub: [] } : pts[idx];
+      sheet(`<h2>${neu ? "Neuer Punkt" : "Punkt bearbeiten"}</h2><form id="cf" style="margin-top:12px" novalidate>
+        ${feld("c_t", "Was ist zu tun?", x.t, { k: "t", type: "textarea", rows: 2 })}
+        ${feld("c_wer", "Wer übernimmt das? (freiwillig)", x.wer, { k: "wer" })}
+        ${feld("c_n", "Notiz (freiwillig)", x.n, { k: "n", type: "textarea", rows: 2 })}
+        ${feld("c_sub", "Unterpunkte, einer pro Zeile (freiwillig, zum Beispiel für Packlisten)", x.sub.map(u => u.t).join("\n"), { k: "sub", type: "textarea", rows: 6 })}
+        <p class="err" id="cf_err" hidden></p>
+        <div class="row"><button class="btn" type="submit">Speichern</button><button class="btn sec" type="button" data-zu>Abbrechen</button>${neu ? "" : `<button class="btn ghost" type="button" id="cDel" style="color:var(--err)">Löschen</button>`}</div><div id="cBox"></div></form>`, (bg, zu) => {
+        const del = $("#cDel", bg);
+        if (del) del.onclick = () => sicherheitsfrage($("#cBox", bg), "<b>Punkt löschen?</b>", "Löschen", async () => { await speichern(pts.filter((_, i) => i !== idx)); zu(); });
+        $("#cf", bg).onsubmit = async (e) => {
+          e.preventDefault(); const er = $("#cf_err", bg); er.hidden = true; const d = datenSammeln(bg);
+          if (d.t.length < 3) { er.textContent = "Bitte beschreiben, was zu tun ist."; er.hidden = false; return; }
+          const alteSub = neu ? [] : x.sub; const sub = d.sub.split("\n").map(z => z.trim()).filter(Boolean).map(z => { const a = alteSub.find(u => u.t === z); return a || { id: clId(), t: z, ok: false }; });
+          const n = pts.slice(), item = { id: neu ? clId() : x.id, t: d.t, wer: d.wer, n: d.n, ok: neu ? false : x.ok, sub };
+          if (neu) n.push(item); else n[idx] = item;
+          try { await speichern(n); zu(); } catch (ex) { er.textContent = ex.message; er.hidden = false; }
+        };
+      });
+    };
+    $("#cNeu", box).onclick = () => editor(null);
+    $$("[data-e]", box).forEach(b => b.onclick = () => editor(+b.dataset.e));
   };
 
   /* ---------- Mitteilungen (Push) ---------- */
