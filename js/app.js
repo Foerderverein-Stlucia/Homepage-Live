@@ -290,6 +290,29 @@
     const seite = (["projekt", "liste", "aushang"].includes(name) ? name + "-" + arg : h).toLowerCase().replace(/[^a-z0-9-]+/g, "-").replace(/^-|-$/g, "").slice(0, 40) || "start";
     D.aufruf(seite, matchMedia("(pointer:coarse)").matches ? "handy" : "computer", !!standalone());
   }
+  /* "Neu"-Markierungen: was seit dem letzten Besuch dazugekommen ist */
+  const Neu = {
+    key: "fv-gesehen", snap: { termine: new Set(), listen: new Set(), projekte: new Set() }, jetzt: null,
+    lesen() { try { return JSON.parse(localStorage.getItem(this.key)); } catch (e) { return null; } },
+    schreiben(o) { try { localStorage.setItem(this.key, JSON.stringify(o)); } catch (e) {} },
+    aktuell(listen) { return { termine: I.termine.filter(t => dt(t.datum) >= heute()).map(t => String(t.id)), listen: listen.filter(l => !l.datum || dt(l.datum) >= heute()).map(l => String(l.id)), projekte: I.projekte.map(p => String(p.id)) }; },
+    ziele: { termine: () => $$('[data-nav="termine"]'), listen: () => $$('[data-nav="mithelfen"]'), projekte: () => [...$$('[data-nav="projekte"]'), ...$$("#mehrBtn")] },
+    zeigen(art) { this.ziele[art]().forEach(e => e.toggleAttribute("data-neu", this.snap[art].size > 0)); },
+    async pruefen() {
+      let listen = []; try { listen = await D.listen(); } catch (e) {}
+      this.jetzt = this.aktuell(listen); const alt = this.lesen();
+      if (!alt) { this.schreiben(this.jetzt); return; }
+      for (const art of Object.keys(this.snap)) { this.snap[art] = new Set(this.jetzt[art].filter(id => !(alt[art] || []).includes(id))); this.zeigen(art); }
+      const h = aktuell().split("-")[0]; this.besucht(h);
+    },
+    besucht(name) {
+      const art = { termine: "termine", mithelfen: "listen", liste: "listen", projekte: "projekte", projekt: "projekte" }[name];
+      if (!art || !this.jetzt) return;
+      const alt = this.lesen() || { termine: [], listen: [], projekte: [] };
+      alt[art] = [...new Set([...(alt[art] || []), ...this.jetzt[art]])]; this.schreiben(alt);
+      const rest = this.snap[art]; this.snap[art] = new Set(); this.zeigen(art); this.snap[art] = rest;
+    }
+  };
   async function render() {
     const h = aktuell();
     const [name, ...rest] = h.split("-");
@@ -303,6 +326,7 @@
     const view = $("#view");
     try { await fn(view, arg); } catch (e) { console.error(e); view.innerHTML = `<div class="card"><h2>Das hat nicht geklappt</h2><p class="mute">${esc(e.message)}</p><p style="margin-top:12px"><button class="btn" onclick="location.reload()">Neu laden</button></p></div>`; }
     zaehlen(h, name, arg);
+    Neu.besucht(name);
     const titel = $("h1", view); document.title = (titel ? titel.textContent + " · " : "") + "Förderverein St. Lucia";
   }
   window.addEventListener("hashchange", () => { render(); window.scrollTo(0, 0); $("#inhalt").focus({ preventScroll: true }); });
@@ -315,7 +339,7 @@
     const d = dt(t.datum);
     return `<article class="card event" style="${farbe(t.farbe)}">
       <div class="datebox tnum"><span>${WT[d.getDay()]}</span><b>${d.getDate()}</b><span>${MON[d.getMonth()]}</span></div>
-      <div style="min-width:0"><h3>${esc(t.titel)}</h3>
+      <div style="min-width:0"><h3>${esc(t.titel)}${Neu.snap.termine.has(String(t.id)) ? ` <span class="neu">Neu</span>` : ""}</h3>
         <p class="meta tnum">${t.von ? esc(t.von) + (t.bis ? "–" + esc(t.bis) : "") + " Uhr · " : ""}${esc(t.ort || "")}</p>
         ${kompakt ? "" : `<p style="margin-top:6px">${esc(t.text || "")}</p>`}
         <div class="acts noprint">
@@ -339,7 +363,7 @@
   function projektKarte(p) {
     return `<a class="card link proj" href="#projekt-${esc(p.id)}" style="${farbe(p.farbe)}">
       ${p.bild ? `<img class="badge photo" src="${esc(p.bild)}" alt="" loading="lazy">` : `<span class="badge">${ICON[p.symbol] || ICON.stern}</span>`}
-      <span style="min-width:0"><h3>${esc(p.titel)}</h3><p>${esc(p.kurz)}</p>
+      <span style="min-width:0"><h3>${esc(p.titel)}${Neu.snap.projekte.has(String(p.id)) ? ` <span class="neu">Neu</span>` : ""}</h3><p>${esc(p.kurz)}</p>
       ${istGeplant(p) ? `<span class="chips"><span class="chip c">Geplant</span></span>${fortschritt(p)}` : ""}
       ${!istGeplant(p) && (p.jahr || p.betrag) ? `<span class="chips">${p.jahr ? `<span class="chip c tnum">${p.jahr}</span>` : ""}${p.betrag ? `<span class="chip tnum">${euro(p.betrag)}</span>` : ""}</span>` : ""}</span></a>`;
   }
@@ -823,6 +847,7 @@
     try { uebernehmen(await D.inhalteLaden()); } catch (e) { console.warn(e); }
     shell();
     render();
+    Neu.pruefen();
     if (Push.moeglich()) { setTimeout(() => Push.sync(), 3000); setTimeout(pushEinladung, 5000); }
     setTimeout(installEinladung, 7000);
   /* Mitteilungen und Zahl am App-Symbol zurücksetzen, sobald die App geöffnet ist */

@@ -306,3 +306,9 @@ th{font-size:.78rem;text-transform:uppercase;letter-spacing:.05em;color:var(--mu
 .jahrkopf{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:22px}
 .jahrkopf .month{margin:0}
 .jahrsumme{font-weight:700;color:var(--green);font-size:.95rem}
+
+/* Neu-Markierungen */
+.neu{display:inline-block;vertical-align:middle;font-size:.7rem;font-weight:800;letter-spacing:.04em;text-transform:uppercase;padding:2px 8px;border-radius:999px;background:var(--pink);color:#fff;margin-left:6px}
+.tabbar [data-neu] .ico,.tabbar #mehrBtn[data-neu] .ico{position:relative}
+.tabbar [data-neu] .ico::after{content:"";position:absolute;top:1px;right:9px;width:11px;height:11px;border-radius:50%;background:var(--pink);border:2px solid var(--surface)}
+.topnav [data-neu]::after{content:"";display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--pink);margin-left:6px;vertical-align:super}
