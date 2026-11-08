@@ -101,3 +101,11 @@ Nach jeder Änderung in `index.html` die `?v=1` hochzählen und in `sw.js` die `
 - Mitgliedsanträge dürfen alle abschicken, lesen kann sie nur ein Vorstandskonto.
 - Listen nach der Veranstaltung in der Verwaltung löschen.
 - Ein verstecktes Feld hält einfache Spam-Bots ab.
+
+
+## Dauerhafter Betrieb
+
+- **GitHub Pages** ist für öffentliche Repositories kostenlos. Das Repository gehört der Organisation „Foerderverein-Stlucia“. Mindestens zwei Vorstandsmitglieder sollten dort Besitzer („Owner“) sein: GitHub → Organisation → People → Rolle ändern.
+- **Supabase** pausiert kostenlose Projekte nach längerer Inaktivität. Die Datei `.github/workflows/wachhalten.yml` ruft die Datenbank deshalb montags und donnerstags einmal ab (Actions → „Datenbank wachhalten“ → „Run workflow“ zum sofortigen Test). GitHub schaltet geplante Abläufe ab, wenn 60 Tage lang nichts im Repository geändert wurde. Dann unter Actions wieder aktivieren. Wurde das Projekt doch pausiert: supabase.com → Projekt → „Restore project“.
+- Ein zweiter Zugang zum Supabase-Konto (Organisation → Team → Mitglied einladen) für Kassenwart oder Vorsitz verhindert, dass alles an einer Person hängt.
+- **Eigene Adresse:** Domain beim Anbieter registrieren, in GitHub unter Settings → Pages → „Custom domain“ eintragen, beim Anbieter einen CNAME auf `foerderverein-stlucia.github.io` setzen (Name der Organisation prüfen), danach in `js/config.js` bei `seitenUrl` die Adresse eintragen und Impressum und Datenschutz anpassen. In Supabase unter Authentication → URL Configuration die neue Adresse als Site URL setzen.

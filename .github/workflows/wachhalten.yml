@@ -1,0 +1,17 @@
+# Ruft die Datenbank einmal pro Woche ab, damit Supabase das kostenlose Projekt nicht wegen Inaktivität pausiert.
+name: Datenbank wachhalten
+on:
+  schedule:
+    - cron: "17 5 * * 1,4"   # montags und donnerstags, 05:17 UTC
+  workflow_dispatch: {}
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Anfrage an Supabase
+        run: |
+          set -e
+          URL=$(grep -o 'supabaseUrl: *"[^"]*"' js/config.js | sed 's/.*"\(.*\)"/\1/')
+          KEY=$(grep -o 'supabaseKey: *"[^"]*"' js/config.js | sed 's/.*"\(.*\)"/\1/')
+          curl -fsS "$URL/rest/v1/inhalte?select=schluessel&limit=1" -H "apikey: $KEY" -H "Authorization: Bearer $KEY"
