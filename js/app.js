@@ -825,6 +825,11 @@
     render();
     if (Push.moeglich()) { setTimeout(() => Push.sync(), 3000); setTimeout(pushEinladung, 5000); }
     setTimeout(installEinladung, 7000);
+  /* Mitteilungen und Zahl am App-Symbol zurücksetzen, sobald die App geöffnet ist */
+  const gelesen = () => { try { if (document.visibilityState !== "visible") return;
+    if (navigator.clearAppBadge) navigator.clearAppBadge().catch(() => {});
+    if ("serviceWorker" in navigator) navigator.serviceWorker.getRegistration().then(r => r && r.getNotifications().then(l => l.forEach(n => n.close()))).catch(() => {}); } catch (e) {} };
+  document.addEventListener("visibilitychange", gelesen); gelesen();
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot); else boot();
   if (!PREVIEW && "serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").catch(() => {});

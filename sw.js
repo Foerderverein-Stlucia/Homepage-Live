@@ -1,7 +1,7 @@
 /* Service Worker: macht die App installierbar und offline lesbar.
    Bei jeder Änderung an Dateien VERSION hochzählen. */
-const VERSION = "fv-37";
-const DATEIEN = ["./", "index.html", "css/app.css?v=37", "js/config.js?v=37", "js/inhalte.js?v=37", "js/daten.js?v=37", "js/app.js?v=37", "js/verwaltung.js?v=37",
+const VERSION = "fv-38";
+const DATEIEN = ["./", "index.html", "css/app.css?v=38", "js/config.js?v=38", "js/inhalte.js?v=38", "js/daten.js?v=38", "js/app.js?v=38", "js/verwaltung.js?v=38",
   "vendor/qrcode.js", "fonts/fredoka.woff2", "fonts/source-sans-3.woff2",
   "img/logo.png", "img/logo-punkte.png", "img/icon-192.png", "img/icon-512.png", "img/favicon.png", "manifest.webmanifest"];
 
@@ -20,10 +20,20 @@ self.addEventListener("fetch", e => {
 /* Push-Benachrichtigungen */
 self.addEventListener("push", e => {
   let d = {}; try { d = e.data ? e.data.json() : {}; } catch (x) { d = { titel: "Förderverein", text: e.data ? e.data.text() : "" }; }
-  e.waitUntil(self.registration.showNotification(d.titel || "Förderverein", { body: d.text || "", icon: "img/icon-192.png", badge: "img/favicon.png", data: { url: d.url || "" } }));
+  e.waitUntil(self.registration.showNotification(d.titel || "Förderverein", { body: d.text || "", icon: "img/icon-192.png", badge: "img/favicon.png", data: { url: d.url || "" } })
+    .then(() => badgeAktualisieren()));
 });
+/* Zahl am App-Symbol = Anzahl ungelesener Mitteilungen (wo das Gerät es unterstützt) */
+function badgeAktualisieren() {
+  return self.registration.getNotifications().then(l => {
+    const nav = self.navigator;
+    if (!nav) return;
+    if (l.length && nav.setAppBadge) return nav.setAppBadge(l.length);
+    if (!l.length && nav.clearAppBadge) return nav.clearAppBadge();
+  }).catch(() => {});
+}
 self.addEventListener("notificationclick", e => {
-  e.notification.close();
+  e.notification.close(); badgeAktualisieren();
   const ziel = new URL(e.notification.data && e.notification.data.url ? e.notification.data.url : "", self.registration.scope).href;
   e.waitUntil(self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(l => {
     for (const c of l) if (c.url.startsWith(self.registration.scope) && "focus" in c) { c.navigate(ziel).catch(() => {}); return c.focus(); }
