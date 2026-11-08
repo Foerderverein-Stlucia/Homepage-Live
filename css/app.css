@@ -312,3 +312,10 @@ th{font-size:.78rem;text-transform:uppercase;letter-spacing:.05em;color:var(--mu
 .tabbar [data-neu] .ico,.tabbar #mehrBtn[data-neu] .ico{position:relative}
 .tabbar [data-neu] .ico::after{content:"";position:absolute;top:1px;right:9px;width:11px;height:11px;border-radius:50%;background:var(--pink);border:2px solid var(--surface)}
 .topnav [data-neu]::after{content:"";display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--pink);margin-left:6px;vertical-align:super}
+
+/* Verwaltung: zwei Ebenen */
+.tabs.groups{gap:4px;margin-bottom:10px;flex-wrap:nowrap}
+.tabs.groups button{flex:1 1 0;min-width:0;padding:10px 4px;font-size:.88rem;text-align:center;border-radius:12px}
+.tabs.sub{margin-bottom:16px}
+.tabs.sub button{background:transparent;border:2px solid var(--line);padding:6px 14px;font-size:.9rem}
+.tabs.sub button[aria-selected="true"]{background:var(--ink);color:var(--surface);border-color:var(--ink)}

@@ -15,7 +15,16 @@
   const FARBEN = [["pink", "Pink"], ["blue", "Blau"], ["green", "Grün"], ["orange", "Orange"], ["purple", "Lila"], ["yellow", "Gelb"], ["red", "Rot"], ["teal", "Petrol"]];
   const SYMBOLE = [["stern", "Stern"], ["rutsche", "Rutsche"], ["wasser", "Wasser"], ["reck", "Turnen"], ["baum", "Baum/Garten"], ["steine", "Steine"], ["wippe", "Wippe"], ["luft", "Luft"], ["buch", "Buch"], ["theater", "Theater"], ["musik", "Musik"], ["kueche", "Küche"], ["ausflug", "Ausflug"], ["herz", "Herz"]];
   const TABS = [["uebersicht", "Übersicht"], ["antraege", "Anträge"], ["mitglieder", "Mitglieder"], ["listen", "Eintragelisten"], ["termine", "Termine"], ["checklisten", "Termin-Checklisten"], ["neuigkeiten", "Neuigkeiten"], ["projekte", "Projekte"], ["galerie", "Galerie"], ["aufgaben", "Jahresplan"], ["mitteilungen", "Mitteilungen"], ["statistik", "Statistik"], ["verein", "Vereinsdaten"], ["zugaenge", "Zugänge"]];
+  const GRUPPEN = [
+    ["Übersicht", ["uebersicht"]],
+    ["Mitglieder", ["antraege", "mitglieder"]],
+    ["Termine", ["termine", "listen", "checklisten", "aufgaben"]],
+    ["Inhalte", ["neuigkeiten", "projekte", "galerie", "mitteilungen"]],
+    ["Verein", ["verein", "zugaenge", "statistik"]]
+  ];
+  const tabName = (k) => (TABS.find(x => x[0] === k) || [])[1] || k;
   let tab = "uebersicht";
+  const letzte = {};
 
   /* ---------- kleine Helfer ---------- */
   const feld = (id, label, wert, o = {}) => `<div class="field${o.cls ? " " + o.cls : ""}"><label for="${id}">${label}</label>${
@@ -70,14 +79,16 @@
   A.SEITEN.verwaltung = async (v) => {
     if (!D.angemeldet()) return anmeldung(v);
     v.innerHTML = `<div class="row" style="justify-content:space-between;margin-bottom:12px"><span class="eyebrow" style="--dot:var(--teal)">Verwaltung</span><button class="btn ghost small" id="abmelden">Abmelden</button></div>
-      <div class="tabs scroll" role="tablist">${TABS.map(([k, t]) => `<button role="tab" aria-selected="${k === tab}" data-t="${k}">${t}</button>`).join("")}</div><div id="vInhalt"><p class="mute">Lädt …</p></div>`;
-    const leiste = $(".tabs", v), aktiv = $('[aria-selected="true"]', leiste);
+      <div class="tabs groups" role="tablist" aria-label="Bereiche">${GRUPPEN.map(([n, ks]) => `<button role="tab" aria-selected="${ks.includes(tab)}" data-g="${ks.includes(tab) ? tab : (letzte[n] || ks[0])}">${n}</button>`).join("")}</div>
+      ${(GRUPPEN.find(g => g[1].includes(tab)) || [0, []])[1].length > 1 ? `<div class="tabs scroll sub" role="tablist" aria-label="Seiten">${GRUPPEN.find(g => g[1].includes(tab))[1].map(k => `<button role="tab" aria-selected="${k === tab}" data-t="${k}">${tabName(k)}</button>`).join("")}</div>` : ""}<div id="vInhalt"><p class="mute">Lädt …</p></div>`;
+    { const g = GRUPPEN.find(x => x[1].includes(tab)); if (g) letzte[g[0]] = tab; }
+    const leiste = $(".tabs.sub", v) || document.createElement("div"), aktiv = $('[aria-selected="true"]', leiste) || leiste;
     const mitte = () => aktiv.offsetLeft - (leiste.clientWidth - aktiv.offsetWidth) / 2;
     leiste.scrollLeft = tabLeiste.pos != null ? tabLeiste.pos : mitte();
     requestAnimationFrame(() => { try { leiste.scrollTo({ left: Math.max(0, mitte()), behavior: "smooth" }); } catch (e) { leiste.scrollLeft = mitte(); } });
     leiste.addEventListener("scroll", () => { tabLeiste.pos = leiste.scrollLeft; }, { passive: true });
     $("#abmelden").onclick = async () => { await D.abmelden(); A.render(); };
-    $$("[data-t]", v).forEach(b => b.onclick = () => { tab = b.dataset.t; A.render(); });
+    $$("[data-t],[data-g]", v).forEach(b => b.onclick = () => { tab = b.dataset.t || b.dataset.g; A.render(); });
     const box = $("#vInhalt");
     try { await TAB[tab](box); }
     catch (e) { box.innerHTML = `<div class="card"><h2>Das hat nicht geklappt</h2><p class="mute" style="margin-top:6px">${esc(e.message)}</p></div>`; }
