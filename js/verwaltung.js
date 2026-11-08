@@ -424,6 +424,7 @@
         <div class="cols">${feld("t_farbe", "Farbe", t.farbe, { k: "farbe", type: "select", opts: FARBEN })}
           ${feld("t_liste", "Eintrageliste dazu", t.liste || "", { k: "liste", type: "select", opts: [["", "– keine –"], ...listen.map(l => [l.id, l.titel + (l.datum ? " (" + datumLang(l.datum) + ")" : "")])], hint: "Zeigt beim Termin einen Knopf „Helfen“." })}</div>
         ${feld("t_spende", "Spendenknopf", t.spende ? "ja" : "", { k: "spende", type: "select", opts: [["", "– kein Knopf –"], ["ja", "Knopf „Spenden“ beim Termin zeigen"]], hint: "Führt direkt zur Spendenseite, zum Beispiel für Termine zu einem Projekt, für das gesammelt wird." })}
+        <label class="check" style="display:flex;gap:10px;align-items:flex-start;margin:14px 0"><input type="checkbox" id="t_info" style="margin-top:4px"><span><b>${neu ? "Alle per Mitteilung informieren" : "Alle über die Änderung informieren"}</b><br><span class="mute small">Beim Speichern geht eine Mitteilung an alle Geräte, die Benachrichtigungen erlaubt haben${D.live ? "" : " (im Vorschau-Modus nicht möglich)"}. Sie lässt sich nicht zurückholen. Ohne Haken wird nichts gesendet.</span></span></label>
         <p class="err" id="tf_err" hidden></p>
         <div class="row"><button class="btn" type="submit">Speichern</button>${neu ? "" : `<button class="btn sec" type="button" id="tDel" style="color:var(--err)">Termin löschen</button>`}</div>
         <div id="sicher"></div></form>`;
@@ -438,7 +439,12 @@
       const arr = (IN().termine || []).slice();
       if (neu) arr.push({ ...d, id: eindeutig(slug(d.titel) + "-" + d.datum.slice(0, 4), arr.map(x => x.id)) });
       else { const i = arr.findIndex(x => x.id === t.id); arr[i] = { ...arr[i], ...d }; }
-      try { await speichern(arr); toast("Termin gespeichert"); } catch (ex) { er.textContent = ex.message; er.hidden = false; }
+      try { await speichern(arr); } catch (ex) { er.textContent = ex.message; er.hidden = false; return; }
+      if ($("#t_info", box).checked && D.live) {
+        const wann = datumLang(d.datum) + (d.von ? ", " + d.von + " Uhr" : "") + (d.ort ? " · " + d.ort : "");
+        try { const an = await D.pushSenden(((neu ? "Neuer Termin: " : "Termin geändert: ") + d.titel).slice(0, 80), (wann + (d.liste ? ". Helfer gesucht, tragt euch ein!" : "")).slice(0, 200), d.liste ? "#liste-" + d.liste : "#termine"); toast("Termin gespeichert, Mitteilung an " + an + " Geräte gesendet"); }
+        catch (ex) { toast("Termin gespeichert, aber die Mitteilung ging nicht raus: " + ex.message); }
+      } else toast("Termin gespeichert");
     };
   }
 
