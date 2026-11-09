@@ -865,5 +865,10 @@
   document.addEventListener("visibilitychange", gelesen); gelesen();
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot); else boot();
-  if (!PREVIEW && "serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").catch(() => {});
+  if (!PREVIEW && "serviceWorker" in navigator && location.protocol === "https:") {
+    const hatteSW = !!navigator.serviceWorker.controller; let neuGeladen = false;
+    /* Neue Version aktiv geworden: einmal neu laden, damit man nicht mit alten Dateien weiterarbeitet (nicht mitten in einer Eingabe) */
+    navigator.serviceWorker.addEventListener("controllerchange", () => { if (!hatteSW || neuGeladen) return; neuGeladen = true; const tippt = document.activeElement && /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName); if (!tippt && !document.getElementById("druckEbene")) location.reload(); });
+    navigator.serviceWorker.register("sw.js").catch(() => {});
+  }
 })();
