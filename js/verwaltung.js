@@ -136,12 +136,12 @@ Wenn sich deine Anschrift, E-Mail-Adresse oder Bankverbindung ändert, gib uns b
 
 Herzliche Grüße
 der Vorstand des {verein}`;
-  const willkommenText = (x) => (V.willkommenText || WILLKOMMEN_STANDARD)
+  const willkommenText = (x) => { const V = IN().verein; return (V.willkommenText || WILLKOMMEN_STANDARD)
     .replace(/\{vorname\}/g, x.vorname || "").replace(/\{nachname\}/g, x.nachname || "").replace(/\{firma\}/g, x.firma || "")
     .replace(/\{verein\}/g, V.name || "").replace(/\{beitrag\}/g, euro(+x.beitrag || 0)).replace(/\{zeitraum\}/g, V.beitragZeitraum || "pro Jahr")
-    .replace(/[ ]{2,}/g, " ");
+    .replace(/[ ]{2,}/g, " "); };
   function willkommenZeigen(x) {
-    const t = willkommenText(x), m = /^Betreff:\s*(.*)\n+/.exec(t), betreff = m ? m[1] : "Willkommen im " + (V.name || "Förderverein"), text = m ? t.slice(m[0].length) : t;
+    const V = IN().verein, t = willkommenText(x), m = /^Betreff:\s*(.*)\n+/.exec(t), betreff = m ? m[1] : "Willkommen im " + (V.name || "Förderverein"), text = m ? t.slice(m[0].length) : t;
     sheet(`<h2>Willkommen schreiben</h2><p class="mute small" style="margin:4px 0 10px">Es wird noch keine Mail automatisch verschickt. Text kopieren und in eine eigene Mail einsetzen, oder gleich das Mailprogramm öffnen.</p>
       <div class="field"><label for="wkTxt">Text für ${esc(x.email)}</label><textarea id="wkTxt" rows="12">${esc(text)}</textarea></div>
       <div class="row" style="margin-top:12px"><button class="btn small" id="wkKop">Text kopieren</button><a class="btn sec small" id="wkMail" href="#">Mail öffnen</a><button class="btn ghost small" data-zu>Schließen</button></div>`, (bg) => {
