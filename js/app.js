@@ -161,7 +161,7 @@
   function mehrMenue() {
     const theme = document.documentElement.dataset.theme || "";
     sheet(`<nav class="menu" aria-label="Weitere Seiten">
-      ${MEHR.filter(m => m.id !== "galerie" || (I.galerie || []).length).map(m => `<a href="#${m.id}" data-zu style="--dot:var(--${m.f})"><span class="d"></span><span>${m.t}<small>${m.s}</small></span></a>`).join("")}
+      ${MEHR.filter(m => m.id !== "galerie" || (I.galerie || []).length).map(m => `<a href="#${m.id}" data-zu style="--dot:var(--${m.f})"><span class="d"></span><span>${m.t}${m.id === "projekte" && Neu.snap.projekte.size ? ` <span class="neu">Neu</span>` : ""}<small>${m.s}</small></span></a>`).join("")}
       ${igName() ? `<a href="https://www.instagram.com/${esc(igName())}/" target="_blank" rel="noopener noreferrer"><span class="ig">${ICON.insta}</span><span>Instagram<small>@${esc(igName())}</small></span></a>` : ""}
       <hr>
       ${installierbar() && installEvt ? `<button id="instBtn"><span class="d" style="--dot:var(--green)"></span><span>App installieren<small>Auf den Startbildschirm legen</small></span></button>` : ""}
@@ -295,7 +295,7 @@
     key: "fv-gesehen", snap: { termine: new Set(), listen: new Set(), projekte: new Set() }, jetzt: null,
     lesen() { try { return JSON.parse(localStorage.getItem(this.key)); } catch (e) { return null; } },
     schreiben(o) { try { localStorage.setItem(this.key, JSON.stringify(o)); } catch (e) {} },
-    aktuell(listen) { return { termine: I.termine.filter(t => dt(t.datum) >= heute()).map(t => String(t.id)), listen: listen.filter(l => !l.datum || dt(l.datum) >= heute()).map(l => String(l.id)), projekte: I.projekte.map(p => String(p.id)) }; },
+    aktuell(listen) { return { termine: I.termine.filter(t => dt(t.datum) >= heute()).map(t => String(t.id)), listen: listen.filter(l => !l.datum || dt(l.datum) >= heute()).map(l => String(l.id)), projekte: I.projekte.filter(p => !p.stumm).map(p => String(p.id)) }; },
     ziele: { termine: () => $$('[data-nav="termine"]'), listen: () => $$('[data-nav="mithelfen"]'), projekte: () => [...$$('[data-nav="projekte"]'), ...$$("#mehrBtn")] },
     zeigen(art) { this.ziele[art]().forEach(e => e.toggleAttribute("data-neu", this.snap[art].size > 0)); },
     async pruefen() {
