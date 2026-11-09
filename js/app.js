@@ -809,7 +809,7 @@
     const alt = document.getElementById("druckEbene"); if (alt) alt.remove();
     const eb = document.createElement("div"); eb.id = "druckEbene";
     eb.style.cssText = "position:fixed;inset:0;z-index:9999;background:#fff;display:flex;flex-direction:column";
-    eb.innerHTML = `<div style="display:flex;gap:10px;align-items:center;justify-content:space-between;padding:calc(10px + env(safe-area-inset-top)) 14px 10px;background:#f4f1ee;border-bottom:1px solid #ccc"><button class="btn sec small" id="dkZu">&larr; Schließen</button><button class="btn small" id="dkDr">${ICON.druck}Drucken / PDF</button></div><iframe style="flex:1;border:0;width:100%;background:#fff" title="Mitgliedsantrag"></iframe>`;
+    eb.innerHTML = `<div style="display:flex;gap:10px;align-items:center;justify-content:space-between;padding:calc(10px + env(safe-area-inset-top)) 14px 10px;background:#f4f1ee;border-bottom:1px solid #ccc"><button class="btn small" id="dkZu" style="background:#fff;color:#1b1b1b;border:2px solid #1b1b1b;font-weight:700">&larr; Schließen</button><button class="btn small" id="dkDr" style="color:#fff">${ICON.druck}Drucken / PDF</button></div><iframe style="flex:1;border:0;width:100%;background:#fff" title="Mitgliedsantrag"></iframe>`;
     document.body.appendChild(eb);
     const fr = eb.querySelector("iframe"); fr.srcdoc = html;
     const zu = () => { eb.remove(); document.removeEventListener("keydown", esc2); };
