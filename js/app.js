@@ -789,7 +789,6 @@
     const zeit = E(V.beitragZeitraum || "pro Jahr");
     const html = `<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Mitgliedsantrag ${E(V.name)}</title>
 <style>body{font:11.5pt/1.4 Arial,Helvetica,sans-serif;color:#000;margin:16mm 18mm}h1{font-size:16pt;margin:6pt 0 10pt}h2{font-size:12pt;margin:14pt 0 4pt;border-bottom:1px solid #000;padding-bottom:2pt}table{border-collapse:collapse;width:100%}td{padding:5pt 4pt 5pt 0;vertical-align:bottom;border-bottom:1px dotted #777}td.l{width:34%;white-space:nowrap}.s{font-size:9.5pt}.sig{display:flex;gap:30pt;margin-top:34pt}.sig div{flex:1;border-top:1px solid #000;padding-top:3pt;font-size:9.5pt}@media print{.np{display:none}}</style></head><body>
-<p class="np"><button onclick="print()" style="font-size:14pt;padding:6pt 14pt">Drucken oder als PDF speichern</button></p>
 <b>${E(V.name)}</b><br>${E(V.kontakt.adresse || "")}
 <h1>Mitgliedsantrag${firma ? " für Firmen" : ""}</h1>
 <p>Hiermit beantrage${firma ? " ich für die unten genannte Firma" : " ich"} die Mitgliedschaft im ${E(V.name)}${/\.$/.test(V.name) ? "" : "."}</p>
@@ -806,9 +805,18 @@
 <div class="sig"><div>Ort, Datum</div><div>Unterschrift${firma ? " (für die Firma)" : ""}</div></div>
 <p class="s" style="margin-top:14pt">${E(V.papierAntrag || "")}</p>
 </body></html>`;
-    const w = window.open("", "_blank");
-    if (!w) { toast("Bitte Pop-ups für diese Seite erlauben."); return; }
-    w.document.open(); w.document.write(html); w.document.close();
+    /* Als Ebene in der App (kein neues Fenster: in der installierten App gäbe es dort keinen Weg zurück) */
+    const alt = document.getElementById("druckEbene"); if (alt) alt.remove();
+    const eb = document.createElement("div"); eb.id = "druckEbene";
+    eb.style.cssText = "position:fixed;inset:0;z-index:9999;background:#fff;display:flex;flex-direction:column";
+    eb.innerHTML = `<div style="display:flex;gap:10px;align-items:center;justify-content:space-between;padding:calc(10px + env(safe-area-inset-top)) 14px 10px;background:#f4f1ee;border-bottom:1px solid #ccc"><button class="btn sec small" id="dkZu">&larr; Schließen</button><button class="btn small" id="dkDr">${ICON.druck}Drucken / PDF</button></div><iframe style="flex:1;border:0;width:100%;background:#fff" title="Mitgliedsantrag"></iframe>`;
+    document.body.appendChild(eb);
+    const fr = eb.querySelector("iframe"); fr.srcdoc = html;
+    const zu = () => { eb.remove(); document.removeEventListener("keydown", esc2); };
+    const esc2 = (e) => { if (e.key === "Escape") zu(); };
+    document.addEventListener("keydown", esc2);
+    eb.querySelector("#dkZu").onclick = zu;
+    eb.querySelector("#dkDr").onclick = () => { try { fr.contentWindow.focus(); fr.contentWindow.print(); } catch (e) { window.print(); } };
   }
 
   function bestaetigung(v, a) {
