@@ -123,26 +123,55 @@
 
   const TAB = {};
 
+  /* ---------- Willkommenstext (solange der Mailversand nicht automatisch läuft) ---------- */
+  const WILLKOMMEN_STANDARD = `Betreff: Willkommen im {verein}
+
+Liebe/r {vorname} {nachname},
+
+herzlich willkommen im {verein}! Wir freuen uns sehr, dass du uns unterstützt, und bedanken uns für deinen Antrag.
+
+Dein Mitgliedsbeitrag beträgt {beitrag} {zeitraum}. Er wird von dem Konto eingezogen, das du im Antrag angegeben hast. Die Mandatsreferenz bekommst du separat.
+
+Wenn sich deine Anschrift, E-Mail-Adresse oder Bankverbindung ändert, gib uns bitte kurz Bescheid. Aktuelle Termine und Mitmach-Aktionen findest du jederzeit in unserer App.
+
+Herzliche Grüße
+der Vorstand des {verein}`;
+  const willkommenText = (x) => (V.willkommenText || WILLKOMMEN_STANDARD)
+    .replace(/\{vorname\}/g, x.vorname || "").replace(/\{nachname\}/g, x.nachname || "").replace(/\{firma\}/g, x.firma || "")
+    .replace(/\{verein\}/g, V.name || "").replace(/\{beitrag\}/g, euro(+x.beitrag || 0)).replace(/\{zeitraum\}/g, V.beitragZeitraum || "pro Jahr")
+    .replace(/[ ]{2,}/g, " ");
+  function willkommenZeigen(x) {
+    const t = willkommenText(x), m = /^Betreff:\s*(.*)\n+/.exec(t), betreff = m ? m[1] : "Willkommen im " + (V.name || "Förderverein"), text = m ? t.slice(m[0].length) : t;
+    sheet(`<h2>Willkommen schreiben</h2><p class="mute small" style="margin:4px 0 10px">Es wird noch keine Mail automatisch verschickt. Text kopieren und in eine eigene Mail einsetzen, oder gleich das Mailprogramm öffnen.</p>
+      <div class="field"><label for="wkTxt">Text für ${esc(x.email)}</label><textarea id="wkTxt" rows="12">${esc(text)}</textarea></div>
+      <div class="row" style="margin-top:12px"><button class="btn small" id="wkKop">Text kopieren</button><a class="btn sec small" id="wkMail" href="#">Mail öffnen</a><button class="btn ghost small" data-zu>Schließen</button></div>`, (bg) => {
+      const ta = bg.querySelector("#wkTxt");
+      bg.querySelector("#wkKop").onclick = async () => { try { await navigator.clipboard.writeText(ta.value); toast("Text kopiert"); } catch (e) { ta.select(); toast("Bitte markierten Text kopieren"); } };
+      bg.querySelector("#wkMail").onclick = (e) => { e.currentTarget.href = "mailto:" + encodeURIComponent(x.email || "").replace("%40", "@") + "?subject=" + encodeURIComponent(betreff) + "&body=" + encodeURIComponent(ta.value); };
+    });
+  }
+
   /* ---------- Anträge ---------- */
   TAB.antraege = async (box) => {
     const a = await D.antraege();
     const neu = a.filter(x => x.status === "neu").length;
     box.innerHTML = `<div class="row" style="justify-content:space-between;margin-bottom:8px"><h1 style="font-size:1.6rem">Mitgliedsanträge</h1>
         <button class="btn sec small" id="csvBtn" ${a.length ? "" : "disabled"}>${ICON.install}Als Tabelle (CSV)</button></div>
-      <p class="mute" style="margin-bottom:12px">${a.length} Anträge, davon ${neu} neu. Mit „Übernehmen“ landet ein Antrag in der Mitgliederliste und wird auf „angenommen“ gesetzt.</p>
+      <p class="mute" style="margin-bottom:12px">${a.length} Anträge, davon ${neu} neu. Mit „Übernehmen“ landet ein Antrag in der Mitgliederliste und wird auf „angenommen“ gesetzt. Danach erscheint ein Willkommenstext zum Kopieren (später auch über „Willkommen“).</p>
       ${a.length ? `<div class="tablewrap"><table><thead><tr><th>Eingang</th><th>Name</th><th>Ort</th><th>E-Mail</th><th>Beitrag</th><th>Newsletter</th><th>IBAN</th><th>Status</th><th></th></tr></thead><tbody>
         ${a.map(x => `<tr><td class="tnum">${new Date(x.erstellt).toLocaleDateString("de-DE")}</td><td>${x.art === "firma" ? `<b>${esc(x.firma)}</b> <span class="chip c" style="--dot:var(--purple);--tint:var(--tint-purple)">Firma</span><br><span class="small">${esc(x.vorname)} ${esc(x.nachname)}</span>${x.nennung ? `<br><span class="mute small">möchte genannt werden</span>` : ""}` : `${esc(x.vorname)} ${esc(x.nachname)}`}${x.kind ? `<br><span class="mute small">${esc(x.kind)}</span>` : ""}</td>
           <td>${esc(x.plz)} ${esc(x.ort)}</td><td>${esc(x.email)}</td><td class="tnum">${euro(+x.beitrag)}</td><td>${x.newsletter ? "ja" : "–"}</td><td class="tnum">${esc(String(x.iban).replace(/(.{4})/g, "$1 "))}</td>
           <td><select data-st="${esc(x.id)}" aria-label="Status">${["neu", "angenommen", "abgelehnt"].map(s => `<option ${s === x.status ? "selected" : ""}>${s}</option>`).join("")}</select></td>
-          <td>${x.status === "neu" ? `<button class="btn small green" data-ueb="${esc(x.id)}">Übernehmen</button>` : ""}</td></tr>`).join("")}
+          <td>${x.status === "neu" ? `<button class="btn small green" data-ueb="${esc(x.id)}">Übernehmen</button>` : x.status === "angenommen" ? `<button class="btn small sec" data-wk="${esc(x.id)}">Willkommen</button>` : ""}</td></tr>`).join("")}
       </tbody></table></div>` : `<div class="card"><p class="mute">Noch keine Anträge eingegangen.</p></div>`}`;
     $$("[data-st]", box).forEach(s => s.onchange = async () => { try { await D.antragStatus(s.dataset.st, s.value); toast("Status gespeichert"); } catch (e) { toast(e.message); } });
+    $$("[data-wk]", box).forEach(b => b.onclick = () => willkommenZeigen(a.find(y => y.id === b.dataset.wk)));
     $$("[data-ueb]", box).forEach(b => b.onclick = async () => {
       const x = a.find(y => y.id === b.dataset.ueb); b.disabled = true;
       try {
         await D.mitgliedSpeichern({ art: x.art || "person", firma: x.firma || "", nennung: !!x.nennung, vorname: x.vorname, nachname: x.nachname, strasse: x.strasse, plz: x.plz, ort: x.ort, email: x.email, telefon: x.telefon || "", kind: x.kind || "",
           beitrag: +x.beitrag, newsletter: !!x.newsletter, kontoinhaber: x.kontoinhaber, iban: x.iban, eintritt: heuteISO(), status: "aktiv", antrag_id: D.live ? x.id : null });
-        await D.antragStatus(x.id, "angenommen"); toast((x.art === "firma" ? x.firma : x.vorname) + " ist jetzt in der Mitgliederliste"); A.render();
+        await D.antragStatus(x.id, "angenommen"); toast((x.art === "firma" ? x.firma : x.vorname) + " ist jetzt in der Mitgliederliste"); await A.render(); if (x.email) willkommenZeigen(x);
       } catch (e) { toast(e.message); b.disabled = false; }
     });
     const cb = $("#csvBtn"); if (cb) cb.onclick = () => {
@@ -582,7 +611,8 @@
           ${feld("v_mail", "E-Mail", k.email, { k: "kontakt.email", type: "email" })}
           ${feld("v_ig", "Instagram-Name (ohne @, leer = ausblenden)", k.instagram === undefined ? "foerdervereinkitastlucia" : k.instagram, { k: "kontakt.instagram", ph: "foerdervereinkitastlucia" })}
           ${feld("v_adr", "Anschrift (auch fürs Impressum)", k.adresse, { k: "kontakt.adresse" })}
-          ${feld("v_papier", "Hinweis zum Papierantrag", V.papierAntrag, { k: "papierAntrag", type: "textarea", rows: 2 })}</div>
+          ${feld("v_papier", "Hinweis zum Papierantrag", V.papierAntrag, { k: "papierAntrag", type: "textarea", rows: 2 })}
+          ${feld("v_wk", "Willkommenstext für neue Mitglieder", V.willkommenText || WILLKOMMEN_STANDARD, { k: "willkommenText", type: "textarea", rows: 12, hint: "Die erste Zeile „Betreff: …“ wird zum Betreff. Platzhalter: {vorname} {nachname} {firma} {beitrag} {zeitraum} {verein}. Leer lassen stellt den Standardtext wieder her." })}</div>
         <div class="card stack" style="--gap:14px"><h2>Bankverbindung</h2>
           ${feld("v_inh", "Kontoinhaber", b.inhaber, { k: "bank.inhaber" })}
           ${feld("v_iban", "IBAN", b.iban, { k: "bank.iban" })}
@@ -623,7 +653,7 @@
       if (!beitraege.length) { er.textContent = "Bitte mindestens einen Beitrag eintragen."; er.hidden = false; return; }
       const neu = { ...V, name: d.name, ort: d.ort, kita: d.kita, zweck: d.zweck, zitat: d.zitat1 || d.zitat2 ? [d.zitat1, d.zitat2] : null,
         vorstand: vorstand.filter(m => m.rolle.trim() || m.name.trim()).map(m => ({ rolle: m.rolle.trim(), name: m.name.trim() })),
-        kontakt: { ...V.kontakt, ...d.kontakt }, papierAntrag: d.papierAntrag, bank: { ...V.bank, ...d.bank }, beitraege,
+        kontakt: { ...V.kontakt, ...d.kontakt }, papierAntrag: d.papierAntrag, willkommenText: (d.willkommenText || "").trim() === WILLKOMMEN_STANDARD ? "" : (d.willkommenText || "").trim(), bank: { ...V.bank, ...d.bank }, beitraege,
         mindestbeitrag: parseFloat(String(d.mindestbeitrag).replace(",", ".")) || Math.min(...beitraege),
         beitraegeFirma: beitraegeFirma.length ? beitraegeFirma : [50, 100, 250], mindestbeitragFirma: parseFloat(String(d.mindestbeitragFirma).replace(",", ".")) || (beitraegeFirma.length ? Math.min(...beitraegeFirma) : 50), beitragZeitraum: d.beitragZeitraum || "pro Jahr",
         glaeubigerId: d.glaeubigerId, registergericht: d.registergericht, gemeinnuetzig: !!d.gemeinnuetzig, bescheid: { ...(V.bescheid || {}), ...(d.bescheid || {}) }, datenschutz: { ...(V.datenschutz || {}), ...(d.datenschutz || {}) }, kitaInfo: { ...V.kitaInfo, ...d.kitaInfo } };
