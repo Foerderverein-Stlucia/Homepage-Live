@@ -22,6 +22,7 @@ Deno.serve(async (req: Request) => {
   for (const it of items || []) {
     let q = sb.from("push_abos").select("endpoint,p256dh,auth");
     if (it.tokens && it.tokens.length) q = q.overlaps("tokens", it.tokens);
+    if (it.nur_vorstand) q = q.eq("vorstand", true);
     const { data: abos } = await q;
     let ok = 0, fehler = "";
     await Promise.all((abos || []).map(async (a) => {

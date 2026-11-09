@@ -138,3 +138,24 @@ begin
     $c$select net.http_post(url := 'https://esfmfgsrrrpqwtmfyoys.supabase.co/functions/v1/push-senden', headers := jsonb_build_object('Content-Type', 'application/json', 'x-cron-secret', %L), body := '{}'::jsonb) where exists (select 1 from public.push_queue where not gesendet)$c$, s));
   perform cron.schedule('push-erinnerung', '0 16 * * *', 'select public.push_erinnerungen()');
 end $$;
+
+-- ===== Vorstandsgeräte: Mitteilung bei neuem Mitgliedsantrag =====
+alter table push_abos  add column if not exists vorstand boolean not null default false;
+alter table push_queue add column if not exists nur_vorstand boolean not null default false;
+
+create or replace function push_vorstand(p_endpoint text, p_an boolean)
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  if p_an and not ist_vorstand() then raise exception 'nicht erlaubt'; end if;
+  update push_abos set vorstand = p_an where endpoint = p_endpoint;
+end $$;
+grant execute on function push_vorstand(text, boolean) to anon, authenticated;
+
+create or replace function antrag_melden() returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  insert into push_queue (titel, text, url, nur_vorstand)
+  values ('Neuer Mitgliedsantrag', 'Ein neuer Antrag wartet in der Verwaltung.', '#verwaltung', true);
+  return new;
+end $$;
+drop trigger if exists antrag_melden on mitgliedsantraege;
+create trigger antrag_melden after insert on mitgliedsantraege for each row execute function antrag_melden();

@@ -828,7 +828,7 @@
   SEITEN.nichtgefunden = (v) => { v.innerHTML = `<div class="card"><h1>Seite nicht gefunden</h1><p class="mute" style="margin-top:8px">Diese Adresse gibt es nicht (mehr).</p><p style="margin-top:12px"><a class="btn" href="#start">Zur Startseite</a></p></div>`; };
 
   /* ---------- Schnittstelle für verwaltung.js ---------- */
-  window.FV_APP = { SEITEN, ICON, esc, euro, toast, sheet, render, kopf, datumLang, frei, gesamt, dt, heute, farbe, qrSvg, linkZu,
+  window.FV_APP = { Push, SEITEN, ICON, esc, euro, toast, sheet, render, kopf, datumLang, frei, gesamt, dt, heute, farbe, qrSvg, linkZu,
     aktualisieren(x) { uebernehmen(x); render(); } };
 
   function uebernehmen(x) {

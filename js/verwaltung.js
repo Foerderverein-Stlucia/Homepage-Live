@@ -76,6 +76,20 @@
 
   /* ================= Seite ================= */
   const tabLeiste = { pos: null };
+  /* Dieses Gerät als Vorstandsgerät markieren: bekommt Mitteilungen bei neuen Anträgen */
+  async function geraetMarkieren(an) {
+    try { const a = await A.Push.abo(); if (a && Notification.permission === "granted") { await D.pushVorstand(a.endpoint, an); return true; } } catch (e) {}
+    return false;
+  }
+  async function geraetKarte(box) {
+    if (!A.Push.moeglich()) return;
+    const k = document.createElement("div"); k.className = "card"; k.style.marginBottom = "12px"; box.prepend(k);
+    const aktiv = await geraetMarkieren(true);
+    if (aktiv) { k.innerHTML = `<h3>Mitteilungen bei neuen Anträgen</h3><p class="mute small" style="margin-top:4px">Auf diesem Gerät eingeschaltet. Ihr bekommt eine Mitteilung, sobald jemand einen Mitgliedsantrag ausfüllt.</p>`; return; }
+    if (A.Push.brauchtApp()) { k.innerHTML = `<h3>Mitteilungen bei neuen Anträgen</h3><p class="mute small" style="margin-top:4px">Auf dem iPhone geht das nur mit der installierten App: Seite in Safari öffnen, „Teilen“, „Zum Home-Bildschirm“, App von dort öffnen und hier einschalten.</p>`; return; }
+    k.innerHTML = `<h3>Mitteilungen bei neuen Anträgen</h3><p class="mute small" style="margin:4px 0 10px">Schaltet Benachrichtigungen auf diesem Gerät ein, dann kommt eine Mitteilung bei jedem neuen Mitgliedsantrag.</p><button class="btn small" id="vgAn">Einschalten</button><p class="err" id="vgErr" hidden></p>`;
+    $("#vgAn", k).onclick = async () => { const er = $("#vgErr", k); er.hidden = true; try { await A.Push.an(); await geraetMarkieren(true); A.toast("Eingeschaltet"); geraetKarte.neu = true; k.remove(); geraetKarte(box); } catch (e) { er.textContent = e.message; er.hidden = false; } };
+  }
   A.SEITEN.verwaltung = async (v) => {
     if (!D.angemeldet()) return anmeldung(v);
     v.innerHTML = `<div class="row" style="justify-content:space-between;margin-bottom:12px"><span class="eyebrow" style="--dot:var(--teal)">Verwaltung</span><button class="btn ghost small" id="abmelden">Abmelden</button></div>
@@ -87,10 +101,10 @@
     leiste.scrollLeft = tabLeiste.pos != null ? tabLeiste.pos : mitte();
     requestAnimationFrame(() => { try { leiste.scrollTo({ left: Math.max(0, mitte()), behavior: "smooth" }); } catch (e) { leiste.scrollLeft = mitte(); } });
     leiste.addEventListener("scroll", () => { tabLeiste.pos = leiste.scrollLeft; }, { passive: true });
-    $("#abmelden").onclick = async () => { await D.abmelden(); A.render(); };
+    $("#abmelden").onclick = async () => { await geraetMarkieren(false); await D.abmelden(); A.render(); };
     $$("[data-t],[data-g]", v).forEach(b => b.onclick = () => { tab = b.dataset.t || b.dataset.g; A.render(); });
     const box = $("#vInhalt");
-    try { await TAB[tab](box); }
+    try { await TAB[tab](box); if (tab === "uebersicht") geraetKarte(box); }
     catch (e) { box.innerHTML = `<div class="card"><h2>Das hat nicht geklappt</h2><p class="mute" style="margin-top:6px">${esc(e.message)}</p></div>`; }
   };
 
