@@ -851,12 +851,45 @@
 
   /* ---------- Start ---------- */
   try { const t = localStorage.getItem("fv_theme"); if (t) document.documentElement.dataset.theme = t; } catch (e) {}
+
+  /* Erinnerungskarte im Zettel-Stil: anstehender Termin beim Öffnen der App
+     (erste Karte bis 7 Tage vorher, eine zweite am Vortag bzw. am Tag selbst) */
+  function erinnerung() {
+    const h = aktuell().split("-")[0];
+    if (["verwaltung", "aushang", "impressum", "datenschutz", "mitglied"].includes(h)) return;
+    if ($(".erinnerung") || $(".sheet-bg") || $("#druckEbene") || document.visibilityState !== "visible") return;
+    const jetzt = heute(), tage = (t) => Math.round((dt(t.datum) - jetzt) / 86400000);
+    const kandidaten = I.termine.filter(t => { const n = tage(t); return n >= 0 && n <= 7; }).sort((a, b) => dt(a.datum) - dt(b.datum) || String(a.von || "").localeCompare(String(b.von || "")));
+    let gez = {}; try { gez = JSON.parse(localStorage.getItem("fv-erinnert")) || {}; } catch (e) {}
+    const t = kandidaten.find(x => (gez[x.id] || 0) < (tage(x) <= 1 ? 2 : 1));
+    if (!t) return;
+    gez[t.id] = tage(t) <= 1 ? 2 : 1; try { localStorage.setItem("fv-erinnert", JSON.stringify(gez)); } catch (e) {}
+    const d = dt(t.datum), n = tage(t), p2 = (x) => String(x).padStart(2, "0");
+    const datum = p2(d.getDate()) + "." + p2(d.getMonth() + 1) + "." + d.getFullYear();
+    const zeit = t.von ? String(t.von).replace(/^(\d{1,2}):00$/, "$1") + " Uhr" : "";
+    const wann = n === 0 ? "Heute!" : n === 1 ? "Morgen!" : "In " + n + " Tagen";
+    const el = document.createElement("div"); el.className = "erinnerung"; el.setAttribute("role", "dialog"); el.setAttribute("aria-modal", "true"); el.setAttribute("aria-label", "Erinnerung: " + t.titel);
+    el.innerHTML = `<div class="er-karte"><div class="er-logo"><img src="img/logo.png" alt="Förderverein St. Lucia"></div>
+      <div class="er-wrap"><div class="er-zettel">
+        <div class="er-zeile er-klein">${wann}</div>
+        <div class="er-zeile er-datum">${datum}<svg viewBox="0 0 300 80" preserveAspectRatio="none" aria-hidden="true"><path d="M18 44 C14 18 110 6 186 9 C262 12 296 28 289 47 C282 68 190 76 118 72 C46 68 10 58 16 38 C22 22 96 12 168 11"/></svg></div>
+        ${zeit ? `<div class="er-zeile er-zeit">${esc(zeit)}</div>` : ""}
+        <div class="er-zeile er-titel">${esc(t.titel)}</div>
+        ${t.ort ? `<div class="er-zeile er-ort">${esc(t.ort)}</div>` : ""}
+      </div></div>
+      <div class="er-tasten">${t.liste ? `<a class="btn" href="#liste-${esc(t.liste)}" data-ez>Eintragen</a>` : `<a class="btn" href="#termine" data-ez>Alle Termine</a>`}<button type="button" class="btn sec" data-ez>Schließen</button></div></div>`;
+    const zu = () => { el.remove(); document.removeEventListener("keydown", taste); };
+    const taste = (e) => { if (e.key === "Escape") zu(); };
+    el.addEventListener("click", (e) => { if (e.target === el || e.target.closest("[data-ez]")) zu(); });
+    document.addEventListener("keydown", taste); document.body.appendChild(el);
+  }
   async function boot() {
     try { uebernehmen(await D.inhalteLaden()); } catch (e) { console.warn(e); }
     shell();
     render();
     Neu.pruefen();
     if (Push.moeglich()) { setTimeout(() => Push.sync(), 3000); setTimeout(pushEinladung, 5000); }
+    setTimeout(erinnerung, 1800);
     setTimeout(installEinladung, 7000);
   /* Mitteilungen und Zahl am App-Symbol zurücksetzen, sobald die App geöffnet ist */
   const gelesen = () => { try { if (document.visibilityState !== "visible") return;
