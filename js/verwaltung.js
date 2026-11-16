@@ -72,6 +72,16 @@
     const g = c.getContext("2d"); g.fillStyle = "#fff"; g.fillRect(0, 0, c.width, c.height); g.drawImage(quelle, 0, 0, c.width, c.height);
     return await new Promise(ok => c.toBlob(ok, "image/jpeg", 0.82));
   }
+  /* Quadratischer Ausschnitt (Porträt) */
+  async function quadrat(datei, kante) {
+    let q, w, h;
+    try { q = await createImageBitmap(datei); w = q.width; h = q.height; }
+    catch (e) { const img = new Image(); img.src = URL.createObjectURL(datei); await img.decode(); q = img; w = img.naturalWidth; h = img.naturalHeight; }
+    const s = Math.min(w, h), sx = (w - s) / 2, sy = (h - s) * 0.3;   // bei Hochformat eher oben (Gesicht)
+    const c = document.createElement("canvas"); c.width = c.height = kante;
+    const g = c.getContext("2d"); g.fillStyle = "#fff"; g.fillRect(0, 0, kante, kante); g.drawImage(q, sx, sy, s, s, 0, 0, kante, kante);
+    return await new Promise(ok => c.toBlob(ok, "image/jpeg", 0.85));
+  }
   const csvZelle = (v) => '"' + String(v ?? "").replace(/"/g, '""') + '"';
 
   /* ================= Seite ================= */
@@ -593,9 +603,12 @@ der Vorstand des {verein}`;
   TAB.verein = async (box) => {
     const V = IN().verein; const b = V.bank || {}, k = V.kontakt || {}, ki = V.kitaInfo || {};
     let vorstand = (V.vorstand || []).map(x => ({ ...x }));
-    const vZeilen = () => vorstand.map((m, i) => `<div class="slot-edit" style="grid-template-columns:1fr 1fr 44px">
-        <div class="field"><label for="vs_r${i}">Amt</label><input id="vs_r${i}" type="text" value="${esc(m.rolle)}" data-vi="${i}" data-vf="rolle" placeholder="z. B. Kassiererin"></div>
-        <div class="field"><label for="vs_n${i}">Name</label><input id="vs_n${i}" type="text" value="${esc(m.name)}" data-vi="${i}" data-vf="name"></div>
+    const vZeilen = () => vorstand.map((m, i) => `<div class="slot-edit vzeile" style="grid-template-columns:72px 1fr 44px;align-items:start">
+        <div class="vfoto"><label class="vfotobtn" title="Foto auswählen">${A.vorstandBild(m, true)}<input type="file" accept="image/*" data-vup="${i}" hidden></label>${m.foto ? `<button type="button" class="linkbtn" data-vfx="${i}">Entfernen</button>` : `<span class="mute small">Foto</span>`}</div>
+        <div class="stack" style="--gap:8px;min-width:0">
+          <div class="field"><label for="vs_r${i}">Amt</label><input id="vs_r${i}" type="text" value="${esc(m.rolle)}" data-vi="${i}" data-vf="rolle" placeholder="z. B. Kassiererin"></div>
+          <div class="field"><label for="vs_n${i}">Name</label><input id="vs_n${i}" type="text" value="${esc(m.name)}" data-vi="${i}" data-vf="name"></div>
+          <p class="err" data-verr="${i}" hidden></p></div>
         <button type="button" class="iconbtn" data-vrm="${i}" aria-label="Entfernen">${ICON.x}</button></div>`).join("");
     box.innerHTML = `<h1 style="font-size:1.6rem;margin-bottom:6px">Vereinsdaten</h1><p class="mute" style="margin-bottom:12px">Alles, was hier steht, erscheint auf der Seite (Startseite, Über uns, Spenden, Kontakt, Impressum, Mitgliedsantrag).</p>
       <form id="vf" class="stack" style="--gap:16px" novalidate>
@@ -640,6 +653,11 @@ der Vorstand des {verein}`;
     const vsz = $("#vsz", box);
     const vb = () => {
       $$("[data-vf]", vsz).forEach(inp => inp.oninput = () => { vorstand[+inp.dataset.vi][inp.dataset.vf] = inp.value; });
+      $$("[data-vup]", vsz).forEach(inp => inp.onchange = async () => {
+        const i = +inp.dataset.vup, datei = inp.files[0]; if (!datei) return; const er = vsz.querySelector(`[data-verr="${i}"]`);
+        try { const blob = await quadrat(datei, 600); vorstand[i].foto = await D.bildHochladen(blob, "vorstand-" + (vorstand[i].name || i) + ".jpg"); vsz.innerHTML = vZeilen(); vb(); toast("Foto hochgeladen, bitte unten noch speichern"); }
+        catch (ex) { er.textContent = ex.message; er.hidden = false; } });
+      $$("[data-vfx]", vsz).forEach(btn => btn.onclick = () => { delete vorstand[+btn.dataset.vfx].foto; vsz.innerHTML = vZeilen(); vb(); });
       $$("[data-vrm]", vsz).forEach(btn => btn.onclick = () => { vorstand.splice(+btn.dataset.vrm, 1); vsz.innerHTML = vZeilen(); vb(); });
     };
     vb();
@@ -652,7 +670,7 @@ der Vorstand des {verein}`;
       if (!d.name) { er.textContent = "Bitte den Vereinsnamen eintragen."; er.hidden = false; return; }
       if (!beitraege.length) { er.textContent = "Bitte mindestens einen Beitrag eintragen."; er.hidden = false; return; }
       const neu = { ...V, name: d.name, ort: d.ort, kita: d.kita, zweck: d.zweck, zitat: d.zitat1 || d.zitat2 ? [d.zitat1, d.zitat2] : null,
-        vorstand: vorstand.filter(m => m.rolle.trim() || m.name.trim()).map(m => ({ rolle: m.rolle.trim(), name: m.name.trim() })),
+        vorstand: vorstand.filter(m => m.rolle.trim() || m.name.trim()).map(m => ({ rolle: m.rolle.trim(), name: m.name.trim(), ...(m.foto ? { foto: m.foto } : {}) })),
         kontakt: { ...V.kontakt, ...d.kontakt }, papierAntrag: d.papierAntrag, willkommenText: (d.willkommenText || "").trim() === WILLKOMMEN_STANDARD ? "" : (d.willkommenText || "").trim(), bank: { ...V.bank, ...d.bank }, beitraege,
         mindestbeitrag: parseFloat(String(d.mindestbeitrag).replace(",", ".")) || Math.min(...beitraege),
         beitraegeFirma: beitraegeFirma.length ? beitraegeFirma : [50, 100, 250], mindestbeitragFirma: parseFloat(String(d.mindestbeitragFirma).replace(",", ".")) || (beitraegeFirma.length ? Math.min(...beitraegeFirma) : 50), beitragZeitraum: d.beitragZeitraum || "pro Jahr",

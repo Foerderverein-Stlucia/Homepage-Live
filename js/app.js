@@ -605,7 +605,7 @@
         <li>Anschaffungen, die über das Kita-Budget hinausgehen: Spielgeräte, Bücher, Musikinstrumente</li>
         <li>Zuschüsse zu Ausflügen und Projekten, damit alle Kinder mitmachen können</li>
         <li>Organisation von St.-Martins-Zug, Adventsbasar und Sommerfest gemeinsam mit dem Kita-Team</li></ul></div></section>
-      <section><h2>Vorstand</h2><div class="grid2" style="margin-top:10px">${V.vorstand.map(m => `<div class="card"><p class="mute small">${esc(m.rolle)}</p><p style="font-weight:700">${esc(m.name)}</p></div>`).join("")}</div></section>
+      <section><h2>Vorstand</h2><div class="grid2" style="margin-top:10px">${V.vorstand.map(m => `<div class="card vorstand">${vorstandBild(m)}<div><p class="mute small">${esc(m.rolle)}</p><p style="font-weight:700">${esc(m.name)}</p></div></div>`).join("")}</div></section>
       <section><h2>Gemeinsam mit der Kita</h2><div class="prose" style="margin-top:10px">${V.kitaInfo ? `<p>${esc(V.kitaInfo.text)}</p>` : ""}<p>Über jedes Projekt sprechen wir vorher mit der Kita-Leitung. So kommt das Geld dort an, wo es im Alltag wirklich gebraucht wird.</p>
         ${V.kitaInfo ? `<div class="card stack" style="--gap:6px"><p class="mute small">Kath. Kita St. Lucia</p><p>${esc(V.kitaInfo.adresse)}</p><p><a href="${esc(V.kitaInfo.link)}" target="_blank" rel="noopener">Zur Seite der Pfarrei St. Maria Magdalena</a></p></div>` : ""}</div></section>
       <section id="unterstuetzer" hidden><h2>Firmen, die uns unterstützen</h2><p class="mute" style="margin-top:4px">Danke an unsere Firmenmitglieder!</p><div class="chips" id="unterstuetzerListe" style="margin-top:10px"></div></section>
@@ -637,9 +637,14 @@
       `<div class="card stack" style="--gap:12px"><div><p class="mute small">E-Mail</p><p style="font-weight:700"><a href="mailto:${esc(V.kontakt.email)}">${esc(V.kontakt.email)}</a></p></div>
        ${igName() ? `<div><p class="mute small">Instagram</p><p style="font-weight:700" class="iglink">${ICON.insta}<a href="https://www.instagram.com/${esc(igName())}/" target="_blank" rel="noopener noreferrer">@${esc(igName())}</a></p></div>` : ""}
        <div><p class="mute small">Post</p><p>${esc(V.kontakt.adresse)}</p></div>
-       <div><p class="mute small">Persönlich</p><p>Sprecht uns beim Bringen und Abholen an, oder werft einen Zettel in den Förderverein-Briefkasten im Eingangsbereich.</p></div></div>`;
+       <div><p class="mute small">Persönlich</p><p>Sprecht uns beim Bringen und Abholen an, oder werft einen Zettel in den Förderverein-Briefkasten im Eingangsbereich.</p></div></div>`
+      + ((V.vorstand || []).some(m => m.foto) ? `<section><h2>Eure Ansprechpartner</h2><p class="mute" style="margin-top:4px">Das ist der Vorstand. Sprecht uns gern an.</p><div class="grid2" style="margin-top:10px">${V.vorstand.filter(m => (m.name || "").trim() && !/^name folgt$/i.test(m.name.trim())).map(m => `<div class="card vorstand">${vorstandBild(m)}<div><p class="mute small">${esc(m.rolle)}</p><p style="font-weight:700">${esc(m.name)}</p></div></div>`).join("")}</div></section>` : "");
   };
 
+  /* Foto oder Anfangsbuchstaben für Vorstandsmitglieder */
+  const vorstandBild = (m, gross) => m.foto
+    ? `<img class="vbild${gross ? " gross" : ""}" src="${esc(m.foto)}" alt="Foto ${esc(m.name || "")}" loading="lazy">`
+    : `<span class="vbild${gross ? " gross" : ""} leer" aria-hidden="true">${esc((String(m.name || "?").trim().match(/[A-Za-zÄÖÜäöü]/) || ["?"])[0].toUpperCase())}</span>`;
   const vertretung = () => { const vs = V.vorstand || []; const vors = vs.filter(m => /vorsitz/i.test(m.rolle || "")); return (vors.length ? vors : vs).slice(0, 2); };
   SEITEN.impressum = (v) => {
     v.innerHTML = kopf("teal", "Rechtliches", "Impressum", "") + `<div class="card prose">
@@ -836,7 +841,7 @@
   SEITEN.nichtgefunden = (v) => { v.innerHTML = `<div class="card"><h1>Seite nicht gefunden</h1><p class="mute" style="margin-top:8px">Diese Adresse gibt es nicht (mehr).</p><p style="margin-top:12px"><a class="btn" href="#start">Zur Startseite</a></p></div>`; };
 
   /* ---------- Schnittstelle für verwaltung.js ---------- */
-  window.FV_APP = { Push, SEITEN, ICON, esc, euro, toast, sheet, render, kopf, datumLang, frei, gesamt, dt, heute, farbe, qrSvg, linkZu,
+  window.FV_APP = { vorstandBild, Push, SEITEN, ICON, esc, euro, toast, sheet, render, kopf, datumLang, frei, gesamt, dt, heute, farbe, qrSvg, linkZu,
     aktualisieren(x) { uebernehmen(x); render(); } };
 
   function uebernehmen(x) {
