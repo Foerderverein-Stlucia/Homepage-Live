@@ -61,6 +61,9 @@ drop policy if exists bilder_aendern on storage.objects;
 create policy bilder_aendern on storage.objects for update to authenticated using (bucket_id = 'bilder' and public.ist_vorstand());
 drop policy if exists bilder_loeschen on storage.objects;
 create policy bilder_loeschen on storage.objects for delete to authenticated using (bucket_id = 'bilder' and public.ist_vorstand());
+-- Upload mit x-upsert braucht zusätzlich eine SELECT-Regel, sonst: "new row violates row-level security policy"
+drop policy if exists bilder_lesen on storage.objects;
+create policy bilder_lesen on storage.objects for select to authenticated using (bucket_id = 'bilder' and public.ist_vorstand());
 
 -- Zugänge für den Vorstand verwalten
 create or replace function public.vorstand_hinzufuegen(p_email text, p_name text)
