@@ -73,6 +73,23 @@
     return location.href.replace(/#.*$/, "");
   }
   const linkZu = (hash) => seitenBasis() + "#" + hash;
+  /* Lesbare Anzeige einer Adresse: "xn--"-Domains (Umlaute) zurück in Umlaute wandeln, "https://" weglassen. QR-Code bleibt unverändert. */
+  function punyDecode(s) {
+    const B = 36, T1 = 1, T2 = 26, SKEW = 38, DAMP = 700; let out = [], i = 0, n = 128, bias = 72;
+    let b = s.lastIndexOf("-"); if (b < 0) b = 0;
+    for (let j = 0; j < b; j++) out.push(s.charCodeAt(j));
+    const adapt = (d, np, first) => { d = first ? Math.floor(d / DAMP) : d >> 1; d += Math.floor(d / np); let k = 0; for (; d > ((B - T1) * T2) >> 1; k += B) d = Math.floor(d / (B - T1)); return k + Math.floor((B - T1 + 1) * d / (d + SKEW)); };
+    for (let idx = b > 0 ? b + 1 : 0; idx < s.length;) {
+      const oldi = i; let w = 1;
+      for (let k = B; ; k += B) {
+        const c = s.charCodeAt(idx++), dg = c - 48 < 10 ? c - 22 : c - 65 < 26 ? c - 65 : c - 97 < 26 ? c - 97 : B;
+        i += dg * w; const t = k <= bias ? T1 : k >= bias + T2 ? T2 : k - bias; if (dg < t) break; w *= B - t;
+      }
+      bias = adapt(i - oldi, out.length + 1, oldi === 0); n += Math.floor(i / (out.length + 1)); i %= out.length + 1; out.splice(i++, 0, n);
+    }
+    return String.fromCodePoint(...out);
+  }
+  const anzeigeUrl = (u) => { try { return String(u).replace(/^https?:\/\//, "").replace(/^[^\/#]+/, h => h.split(".").map(x => /^xn--/i.test(x) ? punyDecode(x.slice(4)) : x).join(".")); } catch (e) { return u; } };
   function qrSvg(text, px) {
     if (typeof window.qrcode !== "function") return '<p class="mute small">QR-Code konnte nicht erzeugt werden.</p>';
     const q = window.qrcode(0, "M"); q.addData(text); q.make();
@@ -552,7 +569,7 @@
       <article class="poster">
         <img class="logo" src="${window.FV_LOGO || "img/logo.png"}" alt="Kath. Kindertageseinrichtung St. Lucia">
         <h1 style="margin-top:16px">${esc(titel)}</h1>
-        <div class="qrbox">${qrSvg(url)}<div class="stack" style="--gap:10px"><p style="font-size:1.15rem">${esc(text)}</p><p class="url">${esc(url)}</p></div></div>
+        <div class="qrbox">${qrSvg(url)}<div class="stack" style="--gap:10px"><p style="font-size:1.15rem">${esc(text)}</p><p class="url">${esc(anzeigeUrl(url))}</p></div></div>
         ${tabelle}
         <p style="margin-top:16px;color:#444">${esc(V.name)}</p>
         ${igName() ? `<div class="igbox">${qrSvg("https://www.instagram.com/" + igName() + "/")}<p>${ICON.insta}<b>Folgt uns auf Instagram</b><br>@${esc(igName())}</p></div>` : ""}
